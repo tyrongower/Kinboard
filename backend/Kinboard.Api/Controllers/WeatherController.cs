@@ -44,7 +44,7 @@ public class WeatherController : ControllerBase
 
             // WeatherAPI.com forecast (docs: https://www.weatherapi.com/docs/)
             // Request up to 6 days (today + next 5). Free tiers may return fewer; we'll handle gracefully.
-            var url = $"https://api.weatherapi.com/v1/forecast.json?key={apiKey}&q={Uri.EscapeDataString(location)}&days=6&aqi=no&alerts=no";
+            var url = $"https://api.weatherapi.com/v1/forecast.json?key={apiKey}&q={Uri.EscapeDataString(location)}&days=5&aqi=no&alerts=no";
             _logger.LogDebug("Calling weather API for location: {Location}", location);
             var response = await _httpClient.GetAsync(url);
 
@@ -87,15 +87,25 @@ public class WeatherController : ControllerBase
 
             var iconPath = NormalizeIconUrl(condition.GetProperty("icon").GetString()); // may start with //
 
-            // Build Forecast5 (skip today, take next up to 5 days)
+            // Build Forecast list including today, limit to 3 total days (today + next 2)
             var daysArray = new List<ForecastItem>();
             var totalDays = forecastDays.GetArrayLength();
-            for (int i = 1; i < Math.Min(totalDays, 6); i++)
+            for (int i = 0; i < Math.Min(totalDays, 3); i++)
             {
                 var fd = forecastDays[i];
                 var day = fd.GetProperty("day");
                 var dateStr = fd.GetProperty("date").GetString() ?? string.Empty;
                 var dCondition = day.GetProperty("condition");
+                var astro = fd.TryGetProperty("astro", out var astroEl) ? astroEl : default;
+
+                string sunrise = string.Empty;
+                string sunset = string.Empty;
+                if (astro.ValueKind != JsonValueKind.Undefined && astro.ValueKind != JsonValueKind.Null)
+                {
+                    sunrise = astro.TryGetProperty("sunrise", out var sr) ? sr.GetString() ?? string.Empty : string.Empty;
+                    sunset = astro.TryGetProperty("sunset", out var ss) ? ss.GetString() ?? string.Empty : string.Empty;
+                }
+
                 daysArray.Add(new ForecastItem
                 {
                     Date = dateStr,
@@ -104,7 +114,17 @@ public class WeatherController : ControllerBase
                     MaxTempC = day.GetProperty("maxtemp_c").GetDouble(),
                     TotalPrecipMm = day.GetProperty("totalprecip_mm").GetDouble(),
                     ChanceOfRainPercent = ReadInt(day, "daily_chance_of_rain", 0),
-                    ConditionIconUrl = NormalizeIconUrl(dCondition.GetProperty("icon").GetString())
+                    ConditionIconUrl = NormalizeIconUrl(dCondition.GetProperty("icon").GetString()),
+                    ConditionText = dCondition.GetProperty("text").GetString() ?? string.Empty,
+                    MaxWindKph = day.TryGetProperty("maxwind_kph", out var mw) ? mw.GetDouble() : 0,
+                    AvgHumidity = ReadInt(day, "avghumidity", 0),
+                    Uv = day.TryGetProperty("uv", out var uv) ? uv.GetDouble() : 0,
+                    Sunrise = sunrise,
+                    Sunset = sunset,
+                    AvgVisKm = day.TryGetProperty("avgvis_km", out var vis) ? vis.GetDouble() : 0,
+                    TotalSnowCm = day.TryGetProperty("totalsnow_cm", out var snow) ? snow.GetDouble() : 0,
+                    DailyChanceOfSnow = ReadInt(day, "daily_chance_of_snow", 0),
+                    DailyWillItRain = ReadInt(day, "daily_will_it_rain", 0)
                 });
             }
 

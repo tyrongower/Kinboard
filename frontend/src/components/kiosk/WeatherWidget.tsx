@@ -11,6 +11,17 @@ interface ForecastItem {
   totalPrecipMm: number;
   chanceOfRainPercent: number;
   conditionIconUrl: string;
+  // Extra details for full report
+  conditionText?: string;
+  maxWindKph?: number;
+  avgHumidity?: number;
+  uv?: number;
+  sunrise?: string;
+  sunset?: string;
+  avgVisKm?: number;
+  totalSnowCm?: number;
+  dailyChanceOfSnow?: number;
+  dailyWillItRain?: number;
 }
 
 interface WeatherData {
@@ -34,6 +45,8 @@ export default function WeatherWidget() {
   const [error, setError] = useState<string | null>(null);
   const [time, setTime] = useState<Date | null>(null);
   const [settings, setSettings] = useState<SiteSettings | null>(null);
+  const [showReport, setShowReport] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState<number>(0);
 
   useEffect(() => {
     (async () => {
@@ -91,10 +104,17 @@ export default function WeatherWidget() {
 
   const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n));
 
+  const openReport = (idx = 0) => {
+    setSelectedIndex(idx);
+    setShowReport(true);
+  };
+
+  const closeReport = () => setShowReport(false);
+
   if (loading) {
     return (
       <div className="flex items-center gap-2">
-        <div 
+        <div
           className="w-5 h-5 border-2 border-t-transparent rounded-full animate-spin"
           style={{ borderColor: 'var(--color-primary)', borderTopColor: 'transparent' }}
         />
@@ -148,33 +168,25 @@ export default function WeatherWidget() {
             <span className="text-xl font-semibold" style={{ color: 'var(--color-text)' }}>
               {Math.round(weather.currentTempC)}°
             </span>
-            <span className="text-xs tabular-nums" style={{ color: 'var(--color-text-secondary)' }}>
+
+          </div>
+          <span className="text-xs tabular-nums" style={{ color: 'var(--color-text-secondary)' }}>
               feels {Math.round(weather.feelsLikeC)}°
             </span>
-          </div>
-          <span className="text-[11px] tabular-nums" style={{ color: 'var(--color-text-muted)' }}>
-            {Math.round(weather.todayMinTempC)}° / {Math.round(weather.todayMaxTempC)}°
-          </span>
         </div>
       </div>
 
-      {/* Today metrics (compressed) */}
-      <div className="flex items-center gap-2 text-[11px] tabular-nums" style={{ color: 'var(--color-text-secondary)' }}>
-        <span title="Humidity">💧{humidityPct}%</span>
-        <span title="Wind">💨{Math.round(weather.windKph)}kph</span>
-        <span title="Rain today">🌧️{weather.todayPrecipMm.toFixed(1)}mm</span>
-      </div>
-
-      {/* Next 4 days (fit-to-header) */}
+      {/* Next 3 days incl. today (fit-to-header) */}
       {weather.forecast5 && weather.forecast5.length > 0 && (
         <div className="flex items-center gap-1">
-          {weather.forecast5.slice(0, 4).map((d, idx) => {
+          {weather.forecast5.slice(0, 3).map((d, idx) => {
             const chance = clamp(d.chanceOfRainPercent ?? 0, 0, 100);
             return (
               <div
                 key={idx}
-                className="flex flex-col items-center gap-0.5 px-1 py-0.5 rounded-md border w-[44px]"
+                className="flex flex-col items-center gap-0.5 px-1 py-0.5 rounded-md border w-[44px] cursor-pointer"
                 style={{ background: 'var(--color-surface)', borderColor: 'var(--color-divider)' }}
+                onClick={() => openReport(idx)}
               >
                 <div className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
                   {formatDay(d.date)}
@@ -206,6 +218,80 @@ export default function WeatherWidget() {
       >
         {time ? formatTime(time) : ''}
       </span>
+
+      {/* Full weather report modal */}
+      {showReport && weather.forecast5 && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          style={{ background: 'color-mix(in oklab, var(--color-bg) 60%, transparent)' as any }}
+          onClick={closeReport}
+        >
+          <div
+            className="w-[92vw] max-w-3xl max-h-[85vh] rounded-xl border shadow-xl overflow-hidden"
+            style={{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-divider)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'var(--color-divider)' }}>
+              <div className="flex items-center gap-2">
+                {weather.conditionIconUrl && (
+                  <img src={weather.conditionIconUrl} alt="" className="w-6 h-6 object-contain" />
+                )}
+                <div className="font-semibold" style={{ color: 'var(--color-text)' }}>Weather report</div>
+              </div>
+              <button onClick={closeReport} className="px-2 py-1 text-sm rounded-md border" style={{ borderColor: 'var(--color-divider)', color: 'var(--color-text-secondary)' }}>Close</button>
+            </div>
+            <div className="p-3 overflow-y-auto" style={{ maxHeight: 'calc(85vh - 48px)' }}>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {weather.forecast5.slice(0, 3).map((d, idx) => {
+                  const active = idx === selectedIndex;
+                  const chance = clamp(d.chanceOfRainPercent ?? 0, 0, 100);
+                  return (
+                    <div
+                      key={idx}
+                      className={`flex flex-col gap-2 rounded-lg border p-3 ${active ? 'ring-1' : ''}`}
+                      style={{ borderColor: 'var(--color-divider)', color: 'var(--color-text)' }}
+                      onClick={() => setSelectedIndex(idx)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="text-sm" style={{ color: 'var(--color-text-muted)' }}>{formatDay(d.date)}</div>
+                        {d.conditionIconUrl && <img src={d.conditionIconUrl} alt="" className="w-6 h-6 object-contain" />}
+                      </div>
+                      <div className="text-base font-semibold" style={{ color: 'var(--color-text)' }}>
+                        {Math.round(d.minTempC)}° / {Math.round(d.maxTempC)}°
+                      </div>
+                      <div className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                        {d.conditionText || ''}
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-[12px] tabular-nums" style={{ color: 'var(--color-text-secondary)' }}>
+                        <div>💧 Humidity: {d.avgHumidity ?? 0}%</div>
+                        <div>💨 Wind: {Math.round(d.maxWindKph ?? 0)} kph</div>
+                        <div>🌧️ Chance: {chance}%</div>
+                        <div>☀️ UV: {d.uv ?? 0}</div>
+                        {d.sunrise && <div>🌅 Sunrise: {d.sunrise}</div>}
+                        {d.sunset && <div>🌇 Sunset: {d.sunset}</div>}
+                        {d.avgVisKm !== undefined && <div>👁️ Vis: {(d.avgVisKm ?? 0).toFixed(1)} km</div>}
+                        {d.totalSnowCm !== undefined && (d.totalSnowCm ?? 0) > 0 && <div>❄️ Snow: {(d.totalSnowCm ?? 0).toFixed(1)} cm</div>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Current conditions summary */}
+              <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-2 text-[12px] tabular-nums">
+                <div className="rounded-md border p-2" style={{ borderColor: 'var(--color-divider)' }}>Now: {Math.round(weather.currentTempC)}° (feels {Math.round(weather.feelsLikeC)}°)</div>
+                <div className="rounded-md border p-2" style={{ borderColor: 'var(--color-divider)' }}>Humidity: {clamp(weather.humidity,0,100)}%</div>
+                <div className="rounded-md border p-2" style={{ borderColor: 'var(--color-divider)' }}>Wind: {Math.round(weather.windKph)} kph</div>
+                <div className="rounded-md border p-2" style={{ borderColor: 'var(--color-divider)' }}>Rain today: {weather.todayPrecipMm.toFixed(1)} mm</div>
+              </div>
+
+              <div className="mt-3 text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                Tip: Most relevant info is at the top. Scroll for additional details.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,0 +1,112 @@
+﻿# Root gitignore optimized for a .NET backend + React/Next.js frontend
+# ----------------------------------------------------------------------------
+# OS / General
+.DS_Store
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.tmp
+*.log
+logs/
+*.swp
+*.swo
+
+# IDEs / Tools
+.vscode/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# ----------------------------------------------------------------------------
+# Git
+*.orig
+*.rej
+*.patch
+
+# ----------------------------------------------------------------------------
+# Backend (.NET / ASP.NET Core)
+# Build output
+backend/**/bin/
+backend/**/obj/
+backend/**/out/
+
+# Visual Studio / Rider
+.vs/
+backend/**/.vs/
+backend/**/.ionide/
+
+# NuGet
+**/packages/
+*.nupkg
+*.snupkg
+.nuget/
+
+# ASP.NET / EF tooling
+backend/**/Migrations/**/~tmp*/
+
+# Secrets / local config (do not commit local overrides)
+backend/**/appsettings.*.local.json
+backend/**/appsettings.Local.json
+backend/**/appsettings.Development.local.json
+
+# Coverage / analysis
+backend/**/TestResults/
+backend/**/coverage*/
+backend/**/Coverage*/
+
+# ----------------------------------------------------------------------------
+# Frontend (Node.js / Next.js)
+# Dependencies
+frontend/**/node_modules/
+
+# Next.js build output
+frontend/**/.next/
+frontend/**/out/
+
+# Caches
+frontend/**/.turbo/
+frontend/**/.cache/
+frontend/**/.parcel-cache/
+
+# Env files (keep sample files if any)
+frontend/**/.env
+frontend/**/.env.*
+!frontend/**/.env.example
+!frontend/**/.env.sample
+
+# Vercel / deploy
+frontend/**/.vercel/
+
+# Logs
+frontend/**/npm-debug.log*
+frontend/**/yarn-debug.log*
+frontend/**/yarn-error.log*
+frontend/**/pnpm-debug.log*
+
+# Coverage
+frontend/**/coverage/
+
+# Misc
+frontend/**/.eslintcache
+frontend/**/.stylelintcache
+
+# Package managers cache (optional, not lockfiles)
+.pnpm-store/
+
+# ----------------------------------------------------------------------------
+# Monorepo / root-level common
+node_modules/
+.next/
+coverage/
+.env
+.env.*
+!.env.example
+!.env.sample
+
+# Do NOT ignore lockfiles; commit them for reproducible builds
+# yarn.lock
+# package-lock.json
+# pnpm-lock.yaml
+*.db*

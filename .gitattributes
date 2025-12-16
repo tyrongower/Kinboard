@@ -1,0 +1,26 @@
+﻿* text=auto
+
+# Treat common script and code files as text with LF endings
+*.sh text eol=lf
+*.md text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+*.js text eol=lf
+*.jsx text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+
+# Windows-specific artifacts remain as-is when needed
+*.sln text eol=crlf
+
+# Mark images/binaries
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.gz binary
+*.7z binary

@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import UsersAdmin from '@/components/admin/UsersAdmin';
 import JobsAdmin from '@/components/admin/JobsAdmin';
@@ -29,6 +29,8 @@ export default function AdminTabbedPage() {
 
   const initialIndex = useMemo(() => getTabIndex(params?.tab), [params?.tab]);
   const [currentTab, setCurrentTab] = useState<number>(initialIndex);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const firstMenuFocusableRef = useRef<HTMLButtonElement | null>(null);
 
   const adminEnabled = useMemo(() => {
     if (typeof window === 'undefined') return true;
@@ -42,6 +44,19 @@ export default function AdminTabbedPage() {
     setCurrentTab(idx);
   }, [params?.tab]);
 
+  // Close drawer on Escape, basic focus management
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsMenuOpen(false);
+    };
+    if (isMenuOpen) {
+      document.addEventListener('keydown', onKey);
+      // send focus to first control after open
+      setTimeout(() => firstMenuFocusableRef.current?.focus(), 0);
+    }
+    return () => document.removeEventListener('keydown', onKey);
+  }, [isMenuOpen]);
+
   const handleTabChange = (index: number) => {
     setCurrentTab(index);
     router.replace(`/admin/${tabs[index].id}`);
@@ -50,24 +65,24 @@ export default function AdminTabbedPage() {
   const currentTabId = tabs[currentTab]?.id;
 
   return (
-    <div className="min-h-screen flex flex-col " style={{ background: 'var(--color-bg)' }}>
-      {/* Header */}
-      <header 
-        className="flex items-center gap-4 px-6 py-4 border-b justify-between"
-        style={{ 
+    <div className="min-h-screen flex flex-col w-full overflow-x-hidden" style={{ background: 'var(--color-bg)' }}>
+      {/* Desktop Header (≥1450px) */}
+      <header
+        className="hidden min-[1450px]:flex flex-wrap items-center gap-3 sm:gap-4 px-4 sm:px-6 py-3 sm:py-4 border-b justify-between"
+        style={{
           background: 'var(--color-bg-elevated)',
           borderColor: 'var(--color-divider)'
         }}
       >
         {/* Brand */}
-        <div className="flex items-center gap-3 mr-4">
-          <div 
+        <div className="flex items-center gap-3 mr-0 sm:mr-4 flex-shrink-0">
+          <div
             className="w-10 h-10 rounded-xl flex items-center justify-center text-xl font-bold"
             style={{ background: 'var(--color-primary-muted)', color: 'var(--color-primary)' }}
           >
             K
           </div>
-          <div>
+          <div className="hidden sm:block">
             <h1 className="text-lg font-semibold" style={{ color: 'var(--color-text)' }}>
               Kinboard
             </h1>
@@ -78,7 +93,7 @@ export default function AdminTabbedPage() {
         </div>
 
         {/* Tab Navigation */}
-        <nav className="tab-list flex-1 ">
+        <nav className="tab-list flex-1 max-w-full sm:max-w-xl min-w-0 order-last sm:order-none mt-2 sm:mt-0">
           {tabs.map((tab, index) => (
             <button
               key={tab.id}
@@ -96,12 +111,126 @@ export default function AdminTabbedPage() {
         {/* Back to Kiosk link */}
         <a
           href="/kiosk/jobs"
-          className="btn btn-secondary text-sm"
-          style={{ minHeight: '40px' }}
+          className="btn btn-secondary text-sm flex-shrink-0"
+          style={{ minHeight: 'var(--touch-target)' }}
         >
           ← Back to Kiosk
         </a>
       </header>
+
+      {/* Compact Header (<1450px) */}
+      <header
+        className="flex min-[1450px]:hidden items-center justify-between gap-3 px-4 py-3 border-b"
+        style={{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-divider)' }}
+      >
+        {/* Brand */}
+        <div className="flex items-center gap-3 flex-shrink-0">
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center text-xl font-bold"
+            style={{ background: 'var(--color-primary-muted)', color: 'var(--color-primary)' }}
+          >
+            K
+          </div>
+          <span className="hidden sm:block font-semibold" style={{ color: 'var(--color-text)' }}>Kinboard</span>
+        </div>
+
+        {/* Center: Current tab title */}
+        <div className="flex-1 min-w-0 text-center">
+          <div className="flex items-center justify-center gap-2 truncate">
+            <span className="text-base font-medium truncate" style={{ color: 'var(--color-text)' }}>
+              {tabs[currentTab]?.label}
+            </span>
+          </div>
+        </div>
+
+        {/* Right: Menu button */}
+        <button
+          className="rounded-lg"
+          style={{ width: 'var(--touch-target-lg)', height: 'var(--touch-target-lg)' }}
+          aria-label="Open menu"
+          onClick={() => setIsMenuOpen(true)}
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--color-text)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="3" y1="6" x2="21" y2="6" />
+            <line x1="3" y1="12" x2="21" y2="12" />
+            <line x1="3" y1="18" x2="21" y2="18" />
+          </svg>
+        </button>
+      </header>
+
+      {/* Drawer / Sheet for small screens */}
+      {isMenuOpen && (
+        <div
+          className="fixed inset-0 z-50 flex flex-col"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Admin menu"
+        >
+          {/* Backdrop */}
+          <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.6)' }} onClick={() => setIsMenuOpen(false)} />
+
+          {/* Panel */}
+          <div
+            className="relative ml-auto mr-auto w-full max-w-[800px] rounded-b-2xl border shadow-lg animate-slide-up"
+            style={{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-divider)' }}
+          >
+            <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'var(--color-divider)' }}>
+              <span className="font-semibold" style={{ color: 'var(--color-text)' }}>Admin Menu</span>
+              <button
+                className="rounded-lg"
+                style={{ width: 'var(--touch-target)', height: 'var(--touch-target)' }}
+                onClick={() => setIsMenuOpen(false)}
+                aria-label="Close menu"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-text)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="p-4 flex flex-col gap-4">
+              {/* Tabs */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {tabs.map((tab, index) => (
+                  <button
+                    key={tab.id}
+                    ref={index === 0 ? firstMenuFocusableRef : undefined}
+                    onClick={() => { handleTabChange(index); setIsMenuOpen(false); }}
+                    className={`tab ${currentTab === index ? 'tab-active' : ''} w-full flex items-center justify-center gap-2`}
+                    style={{ minHeight: 'var(--touch-target-lg)' }}
+                  >
+                    <span className="text-lg">{tab.icon}</span>
+                    <span>{tab.label}</span>
+                  </button>
+                ))}
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center justify-center gap-2">
+                <a
+                  href="/kiosk/jobs"
+                  className="btn btn-secondary"
+                  style={{ minWidth: '200px', minHeight: 'var(--touch-target-lg)' }}
+                >
+                  ← Back to Kiosk
+                </a>
+              </div>
+
+              {/* Close */}
+              <div className="flex justify-center pt-2">
+                <button
+                  className="btn-secondary"
+                  style={{ minWidth: '200px' }}
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main Content */}
       <main className="flex-1 overflow-auto p-4 sm:p-6">

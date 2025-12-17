@@ -1,5 +1,9 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 using Kinboard.Api.Data;
+using Kinboard.Api.Services;
 using Scalar.AspNetCore;
 using System;
 using System.Data;
@@ -35,10 +39,66 @@ builder.Services.AddOpenApi();
 builder.Services.AddHttpClient();
 builder.Services.AddMemoryCache();
 builder.Services.AddScoped<Kinboard.Api.Services.ICalendarService, Kinboard.Api.Services.CalendarService>();
+builder.Services.AddScoped<ITokenService, TokenService>();
 
 // Configure SQLite database
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=kinboard.db"));
+
+// Configure JWT authentication
+var jwtSecret = builder.Configuration["Jwt:Secret"];
+if (string.IsNullOrEmpty(jwtSecret))
+{
+    throw new InvalidOperationException("JWT Secret must be configured in appsettings.json");
+}
+
+var key = Encoding.UTF8.GetBytes(jwtSecret);
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(key),
+        ValidateIssuer = true,
+        ValidIssuer = builder.Configuration["Jwt:Issuer"] ?? "Kinboard.Api",
+        ValidateAudience = true,
+        ValidAudience = builder.Configuration["Jwt:Audience"] ?? "Kinboard.Frontend",
+        ValidateLifetime = true,
+        ClockSkew = TimeSpan.Zero // No clock skew tolerance
+    };
+
+    // Read token from cookie if not in Authorization header
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            // Check Authorization header first
+            var token = context.Request.Headers["Authorization"]
+                .FirstOrDefault()?.Split(" ").Last();
+
+            if (string.IsNullOrEmpty(token))
+            {
+                // Fall back to cookie (not used in our implementation, but available)
+                token = context.Request.Cookies["accessToken"];
+            }
+
+            if (!string.IsNullOrEmpty(token))
+            {
+                context.Token = token;
+            }
+
+            return Task.CompletedTask;
+        }
+    };
+});
+
+builder.Services.AddAuthorization();
 
 // Configure CORS: permissive in Development, strict & configurable otherwise
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
@@ -57,6 +117,7 @@ builder.Services.AddCors(options =>
             if (allowedOrigins.Length > 0)
             {
                 policy.WithOrigins(allowedOrigins)
+                      .AllowCredentials() // Required for cookies
                       .AllowAnyHeader()
                       .AllowAnyMethod();
             }
@@ -83,6 +144,7 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseCors("AllowFrontend");
+app.UseAuthentication(); // Must come before UseAuthorization
 app.UseAuthorization();
 app.MapControllers();
 

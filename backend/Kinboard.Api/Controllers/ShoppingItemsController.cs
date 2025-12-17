@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Kinboard.Api.Data;
 using Kinboard.Api.Models;
@@ -7,6 +8,7 @@ namespace Kinboard.Api.Controllers;
 
 [ApiController]
 [Route("api/shoppinglists/{listId}/items")]
+[Authorize] // Require authentication (admin + kiosk)
 public class ShoppingItemsController : ControllerBase
 {
     private readonly AppDbContext _context;

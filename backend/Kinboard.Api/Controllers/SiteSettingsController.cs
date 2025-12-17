@@ -1,12 +1,15 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Kinboard.Api.Data;
 using Kinboard.Api.Models;
+using Kinboard.Api.Dtos;
 
 namespace Kinboard.Api.Controllers;
 
 [ApiController]
 [Route("api/sitesettings")]
+[Authorize] // Require authentication
 public class SiteSettingsController : ControllerBase
 {
     private readonly AppDbContext _context;
@@ -19,7 +22,7 @@ public class SiteSettingsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<SiteSettings>> Get()
+    public async Task<ActionResult> Get()
     {
         try
         {
@@ -55,6 +58,24 @@ public class SiteSettingsController : ControllerBase
                     await _context.SaveChangesAsync();
                 }
             }
+
+            // Return different data based on role - kiosk users don't need API keys
+            if (User.IsInRole("kiosk"))
+            {
+                var dto = new SiteSettingsDto
+                {
+                    Id = settings.Id,
+                    DefaultView = settings.DefaultView,
+                    CompletionMode = settings.CompletionMode,
+                    ChoresRefreshSeconds = settings.ChoresRefreshSeconds,
+                    CalendarRefreshSeconds = settings.CalendarRefreshSeconds,
+                    WeatherRefreshSeconds = settings.WeatherRefreshSeconds,
+                    WeatherLocation = settings.WeatherLocation
+                };
+                return Ok(dto);
+            }
+
+            // Admin users get full settings including API keys
             return Ok(settings);
         }
         catch (Exception ex)
@@ -65,6 +86,7 @@ public class SiteSettingsController : ControllerBase
     }
 
     [HttpPut]
+    [Authorize(Roles = "admin")] // Admin only for updates
     public async Task<IActionResult> Update(SiteSettings updated)
     {
         try

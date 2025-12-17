@@ -17,6 +17,8 @@ public class AppDbContext : DbContext
     public DbSet<SiteSettings> SiteSettings { get; set; }
     public DbSet<ShoppingList> ShoppingLists { get; set; }
     public DbSet<ShoppingItem> ShoppingItems { get; set; }
+    public DbSet<RefreshToken> RefreshTokens { get; set; }
+    public DbSet<KioskToken> KioskTokens { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -30,7 +32,7 @@ public class AppDbContext : DbContext
             entity.Property(e => e.Description).HasMaxLength(1000);
             entity.Property(e => e.CreatedAt).IsRequired();
             entity.Property(e => e.UseSharedRecurrence).IsRequired().HasDefaultValue(true);
-            
+
             // Relationship: Job -> JobAssignments (multi-user)
             entity
                 .HasMany(e => e.Assignments)
@@ -93,7 +95,7 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<User>(entity =>
         {
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.Username).IsRequired().HasMaxLength(100);
+
             entity.Property(e => e.DisplayName).IsRequired().HasMaxLength(200);
             entity.Property(e => e.ColorHex).IsRequired().HasMaxLength(7); // like #RRGGBB
             entity.Property(e => e.HideCompletedInKiosk)
@@ -104,7 +106,15 @@ public class AppDbContext : DbContext
             entity.Property(e => e.DisplayOrder)
                   .IsRequired()
                   .HasDefaultValue(0);
-            entity.HasIndex(e => e.Username).IsUnique();
+            entity.Property(e => e.Email)
+                  .HasMaxLength(200);
+            entity.Property(e => e.PasswordHash)
+                  .HasMaxLength(500);
+            entity.Property(e => e.IsAdmin)
+                  .IsRequired()
+                  .HasDefaultValue(false);
+
+            entity.HasIndex(e => e.Email).IsUnique();
             entity.HasIndex(e => e.DisplayOrder);
         });
 
@@ -152,7 +162,7 @@ public class AppDbContext : DbContext
             entity.Property(e => e.AvatarUrl).HasMaxLength(500);
             entity.Property(e => e.DisplayOrder).IsRequired().HasDefaultValue(0);
             entity.HasIndex(e => e.DisplayOrder);
- 
+
 
             // Relationship: ShoppingList -> ShoppingItems
             entity
@@ -172,6 +182,35 @@ public class AppDbContext : DbContext
             entity.Property(e => e.CreatedAt).IsRequired();
             entity.HasIndex(e => e.ShoppingListId);
             entity.HasIndex(e => e.DisplayOrder);
+        });
+
+        modelBuilder.Entity<RefreshToken>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Token).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.ExpiresAt).IsRequired();
+            entity.Property(e => e.CreatedAt).IsRequired();
+            entity.Property(e => e.ReplacedByToken).HasMaxLength(200);
+            entity.Property(e => e.RevocationReason).HasMaxLength(500);
+            entity.HasIndex(e => e.Token).IsUnique();
+            entity.HasIndex(e => e.UserId);
+
+            // Relationship: RefreshToken -> User
+            entity
+                .HasOne(e => e.User)
+                .WithMany(u => u.RefreshTokens)
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<KioskToken>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Token).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.CreatedAt).IsRequired();
+            entity.Property(e => e.RevocationReason).HasMaxLength(500);
+            entity.HasIndex(e => e.Token).IsUnique();
         });
     }
 }

@@ -45,8 +45,9 @@ export default function UsersAdmin() {
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<User | null>(null);
-  const [form, setForm] = useState<Omit<User, 'id'>>({ username: '', displayName: '', colorHex: '#777777' });
+  const [form, setForm] = useState<Omit<User, 'id'>>({ displayName: '', colorHex: '#777777', email: null, isAdmin: false });
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [password, setPassword] = useState('');
   // drag & drop state
   const [draggingId, setDraggingId] = useState<number | null>(null);
 
@@ -68,34 +69,45 @@ export default function UsersAdmin() {
 
   const openCreate = () => {
     setEditing(null);
-    setForm({ username: '', displayName: '', colorHex: '#777777' });
+    setForm({ displayName: '', colorHex: '#777777', email: null, isAdmin: false });
     setAvatarFile(null);
+    setPassword('');
     setOpen(true);
   };
 
   const openEdit = (u: User) => {
     setEditing(u);
-    setForm({ username: u.username, displayName: u.displayName, colorHex: u.colorHex });
+    setForm({ displayName: u.displayName, colorHex: u.colorHex, email: u.email || null, isAdmin: u.isAdmin || false });
     setAvatarFile(null);
+    setPassword('');
     setOpen(true);
   };
 
   const closeDialog = () => setOpen(false);
 
   const validColor = useMemo(() => /^#([0-9a-fA-F]{6})$/.test(form.colorHex), [form.colorHex]);
-  const canSave = form.username.trim() && form.displayName.trim() && validColor;
+  const canSave = form.displayName.trim() && validColor;
 
   const save = async () => {
     try {
+      // Prepare request payload
+      const payload = {
+        displayName: form.displayName,
+        colorHex: form.colorHex,
+        email: form.email || null,
+        isAdmin: form.isAdmin || false,
+        password: password || undefined, // Only include if set
+      };
+
       if (editing) {
-        await userApi.update(editing.id, { ...editing, ...form });
+        await userApi.update(editing.id, payload);
         if (avatarFile) {
           if (avatarFile.size > 5 * 1024 * 1024) throw new Error('Avatar too large (max 5 MB)');
           const url = await userApi.uploadAvatar(editing.id, avatarFile);
           setUsers((prev) => prev.map((x) => (x.id === editing.id ? { ...x, avatarUrl: url } : x)));
         }
       } else {
-        const created = await userApi.create(form);
+        const created = await userApi.create(payload);
         if (avatarFile) {
           try {
             const url = await userApi.uploadAvatar(created.id, avatarFile);
@@ -156,7 +168,7 @@ export default function UsersAdmin() {
 
       {/* Error Message */}
       {error && (
-        <div 
+        <div
           className="mb-4 p-3 rounded-lg"
           style={{ background: 'var(--color-error-muted)', color: 'var(--color-error)' }}
         >
@@ -171,7 +183,8 @@ export default function UsersAdmin() {
             <tr>
               <th style={{ width: 48 }}></th>
               <th>Display Name</th>
-              <th>Username</th>
+              <th>Email</th>
+              <th>Role</th>
               <th>Color</th>
               <th style={{ textAlign: 'right' }}>Actions</th>
             </tr>
@@ -194,13 +207,13 @@ export default function UsersAdmin() {
                 <td>
                   <div className="flex items-center gap-3">
                     {u.avatarUrl ? (
-                      <img 
-                        src={u.avatarUrl} 
-                        alt={u.displayName} 
+                      <img
+                        src={u.avatarUrl}
+                        alt={u.displayName}
                         className="w-8 h-8 rounded-full object-cover"
                       />
                     ) : (
-                      <div 
+                      <div
                         className="avatar avatar-sm"
                         style={{ background: u.colorHex, color: 'white' }}
                       >
@@ -210,10 +223,23 @@ export default function UsersAdmin() {
                     <span style={{ color: 'var(--color-text)' }}>{u.displayName}</span>
                   </div>
                 </td>
-                <td style={{ color: 'var(--color-text-secondary)' }}>{u.username}</td>
+                <td style={{ color: 'var(--color-text-secondary)' }}>{u.email || '—'}</td>
+                <td>
+                  {u.isAdmin && (
+                    <span
+                      className="px-2 py-1 rounded text-xs font-medium"
+                      style={{
+                        background: 'var(--color-primary-muted)',
+                        color: 'var(--color-primary)'
+                      }}
+                    >
+                      Admin
+                    </span>
+                  )}
+                </td>
                 <td>
                   <div className="flex items-center gap-2">
-                    <div 
+                    <div
                       className="color-swatch"
                       style={{ background: u.colorHex }}
                     />
@@ -224,15 +250,15 @@ export default function UsersAdmin() {
                 </td>
                 <td>
                   <div className="flex items-center justify-end gap-1">
-                    <button 
-                      className="icon-btn icon-btn-sm" 
+                    <button
+                      className="icon-btn icon-btn-sm"
                       onClick={() => openEdit(u)}
                       aria-label="Edit"
                     >
                       <IconEdit />
                     </button>
-                    <button 
-                      className="icon-btn icon-btn-sm icon-btn-danger" 
+                    <button
+                      className="icon-btn icon-btn-sm icon-btn-danger"
                       onClick={() => remove(u)}
                       aria-label="Delete"
                     >
@@ -244,7 +270,7 @@ export default function UsersAdmin() {
             ))}
             {!loading && users.length === 0 && (
               <tr>
-                <td colSpan={5}>
+                <td colSpan={6}>
                   <div className="empty-state">
                     <div className="empty-state-icon">👥</div>
                     <p>No users yet</p>
@@ -277,18 +303,53 @@ export default function UsersAdmin() {
                   />
                 </div>
 
-                {/* Username */}
+                {/* Email */}
                 <div className="form-group">
-                  <label className="label">Username *</label>
+                  <label className="label">Email</label>
                   <input
-                    type="text"
+                    type="email"
                     className="input"
-                    value={form.username}
-                    onChange={(e) => setForm((f) => ({ ...f, username: e.target.value }))}
-                    placeholder="Enter username"
+                    value={form.email || ''}
+                    onChange={(e) => setForm((f) => ({ ...f, email: e.target.value || null }))}
+                    placeholder="user@example.com"
                   />
                   <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>
-                    Unique key used for linking
+                    Required for admin login
+                  </p>
+                </div>
+
+                {/* Password */}
+                {(editing?.email || form.email) && (
+                  <div className="form-group">
+                    <label className="label">Password {!editing && '*'}</label>
+                    <input
+                      type="password"
+                      className="input"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder={editing ? 'Leave blank to keep current' : 'Enter password'}
+                      autoComplete="new-password"
+                    />
+                    <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>
+                      {editing ? 'Leave blank to keep current password' : 'Minimum 8 characters'}
+                    </p>
+                  </div>
+                )}
+
+                {/* Admin Role */}
+                <div className="form-group">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={form.isAdmin || false}
+                      onChange={(e) => setForm((f) => ({ ...f, isAdmin: e.target.checked }))}
+                      className="w-5 h-5 rounded"
+                      style={{ accentColor: 'var(--color-primary)' }}
+                    />
+                    <span className="label mb-0">Admin Access</span>
+                  </label>
+                  <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginTop: '0.5rem' }}>
+                    Admins can access admin panel and manage all settings
                   </p>
                 </div>
 
@@ -325,14 +386,14 @@ export default function UsersAdmin() {
                     <label className="label">Avatar</label>
                     {editing.avatarUrl && (
                       <div className="flex items-center gap-4 mb-3">
-                        <img 
-                          src={editing.avatarUrl} 
-                          alt="avatar" 
+                        <img
+                          src={editing.avatarUrl}
+                          alt="avatar"
                           className="w-16 h-16 rounded-full object-cover"
                         />
                         <button
                           className="btn btn-secondary text-sm"
-                          style={{ 
+                          style={{
                             minHeight: '36px',
                             color: 'var(--color-error)',
                             borderColor: 'var(--color-error)'
@@ -366,8 +427,8 @@ export default function UsersAdmin() {
               <button className="btn btn-secondary" onClick={closeDialog}>
                 Cancel
               </button>
-              <button 
-                className="btn btn-primary" 
+              <button
+                className="btn btn-primary"
                 onClick={save}
                 disabled={!canSave}
                 style={!canSave ? { opacity: 0.5, cursor: 'not-allowed' } : {}}

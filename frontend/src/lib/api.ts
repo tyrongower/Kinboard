@@ -20,6 +20,28 @@ function getApiUrl(): string {
 
 const API_URL = getApiUrl();
 
+// Global access token storage (set by AuthContext)
+let globalAccessToken: string | null = null;
+
+export function setGlobalAccessToken(token: string | null) {
+  globalAccessToken = token;
+}
+
+// Authenticated fetch wrapper
+async function authFetch(url: string, options: RequestInit = {}): Promise<Response> {
+  const headers = new Headers(options.headers);
+
+  // Add Authorization header if we have an access token
+  if (globalAccessToken) {
+    headers.set('Authorization', `Bearer ${globalAccessToken}`);
+  }
+
+  return fetch(url, {
+    ...options,
+    headers,
+  });
+}
+
 export interface JobAssignment {
   id: number;
   jobId: number;
@@ -51,12 +73,13 @@ export interface Job {
 
 export interface User {
   id: number;
-  username: string;
   displayName: string;
   colorHex: string;
   hideCompletedInKiosk?: boolean;
   avatarUrl?: string | null;
   displayOrder?: number;
+  email?: string | null;
+  isAdmin?: boolean;
 }
 
 // Calendar types
@@ -90,27 +113,41 @@ export interface CalendarEventItem {
   allDay: boolean;
 }
 
+export interface KioskToken {
+  id: number;
+  name: string;
+  createdAt: string;
+  isActive: boolean;
+}
+
+export interface KioskTokenResponse {
+  id: number;
+  token: string;
+  name: string;
+  createdAt: string;
+}
+
 export const jobApi = {
   async getAll(): Promise<Job[]> {
-    const response = await fetch(`${API_URL}/api/jobs`);
+    const response = await authFetch(`${API_URL}/api/jobs`);
     if (!response.ok) throw new Error('Failed to fetch jobs');
     return response.json();
   },
 
   async getByDate(date: string): Promise<Job[]> {
-    const response = await fetch(`${API_URL}/api/jobs?date=${date}`);
+    const response = await authFetch(`${API_URL}/api/jobs?date=${date}`);
     if (!response.ok) throw new Error('Failed to fetch jobs');
     return response.json();
   },
 
   async getById(id: number): Promise<Job> {
-    const response = await fetch(`${API_URL}/api/jobs/${id}`);
+    const response = await authFetch(`${API_URL}/api/jobs/${id}`);
     if (!response.ok) throw new Error('Failed to fetch job');
     return response.json();
   },
 
   async create(job: Omit<Job, 'id' | 'createdAt'>): Promise<Job> {
-    const response = await fetch(`${API_URL}/api/jobs`, {
+    const response = await authFetch(`${API_URL}/api/jobs`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(job),
@@ -120,7 +157,7 @@ export const jobApi = {
   },
 
   async update(id: number, job: Job): Promise<void> {
-    const response = await fetch(`${API_URL}/api/jobs/${id}`, {
+    const response = await authFetch(`${API_URL}/api/jobs/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(job),
@@ -129,7 +166,7 @@ export const jobApi = {
   },
 
   async delete(id: number): Promise<void> {
-    const response = await fetch(`${API_URL}/api/jobs/${id}`, {
+    const response = await authFetch(`${API_URL}/api/jobs/${id}`, {
       method: 'DELETE',
     });
     if (!response.ok) throw new Error('Failed to delete job');
@@ -138,7 +175,7 @@ export const jobApi = {
   async uploadImage(id: number, file: File): Promise<string> {
     const formData = new FormData();
     formData.append('file', file);
-    const response = await fetch(`${API_URL}/api/jobs/${id}/image`, {
+    const response = await authFetch(`${API_URL}/api/jobs/${id}/image`, {
       method: 'POST',
       body: formData,
     });
@@ -148,7 +185,7 @@ export const jobApi = {
   },
 
   async deleteImage(id: number): Promise<void> {
-    const response = await fetch(`${API_URL}/api/jobs/${id}/image`, {
+    const response = await authFetch(`${API_URL}/api/jobs/${id}/image`, {
       method: 'DELETE',
     });
     if (!response.ok) throw new Error('Failed to delete image');
@@ -157,19 +194,19 @@ export const jobApi = {
 
 export const jobAssignmentApi = {
   async getAll(jobId: number): Promise<JobAssignment[]> {
-    const response = await fetch(`${API_URL}/api/jobs/${jobId}/assignments`);
+    const response = await authFetch(`${API_URL}/api/jobs/${jobId}/assignments`);
     if (!response.ok) throw new Error('Failed to fetch assignments');
     return response.json();
   },
 
   async getById(jobId: number, id: number): Promise<JobAssignment> {
-    const response = await fetch(`${API_URL}/api/jobs/${jobId}/assignments/${id}`);
+    const response = await authFetch(`${API_URL}/api/jobs/${jobId}/assignments/${id}`);
     if (!response.ok) throw new Error('Failed to fetch assignment');
     return response.json();
   },
 
   async create(jobId: number, assignment: Omit<JobAssignment, 'id' | 'jobId'>): Promise<JobAssignment> {
-    const response = await fetch(`${API_URL}/api/jobs/${jobId}/assignments`, {
+    const response = await authFetch(`${API_URL}/api/jobs/${jobId}/assignments`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...assignment, jobId }),
@@ -179,7 +216,7 @@ export const jobAssignmentApi = {
   },
 
   async update(jobId: number, id: number, assignment: JobAssignment): Promise<void> {
-    const response = await fetch(`${API_URL}/api/jobs/${jobId}/assignments/${id}`, {
+    const response = await authFetch(`${API_URL}/api/jobs/${jobId}/assignments/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(assignment),
@@ -188,14 +225,14 @@ export const jobAssignmentApi = {
   },
 
   async delete(jobId: number, id: number): Promise<void> {
-    const response = await fetch(`${API_URL}/api/jobs/${jobId}/assignments/${id}`, {
+    const response = await authFetch(`${API_URL}/api/jobs/${jobId}/assignments/${id}`, {
       method: 'DELETE',
     });
     if (!response.ok) throw new Error('Failed to delete assignment');
   },
 
   async updateOrder(jobId: number, assignmentIds: number[]): Promise<void> {
-    const response = await fetch(`${API_URL}/api/jobs/${jobId}/assignments/order`, {
+    const response = await authFetch(`${API_URL}/api/jobs/${jobId}/assignments/order`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(assignmentIds),
@@ -204,14 +241,14 @@ export const jobAssignmentApi = {
   },
 
   async complete(jobId: number, id: number, date: string): Promise<void> {
-    const response = await fetch(`${API_URL}/api/jobs/${jobId}/assignments/${id}/complete?date=${date}`, {
+    const response = await authFetch(`${API_URL}/api/jobs/${jobId}/assignments/${id}/complete?date=${date}`, {
       method: 'POST',
     });
     if (!response.ok) throw new Error('Failed to complete assignment');
   },
 
   async uncomplete(jobId: number, id: number, date: string): Promise<void> {
-    const response = await fetch(`${API_URL}/api/jobs/${jobId}/assignments/${id}/complete?date=${date}`, {
+    const response = await authFetch(`${API_URL}/api/jobs/${jobId}/assignments/${id}/complete?date=${date}`, {
       method: 'DELETE',
     });
     if (!response.ok) throw new Error('Failed to uncomplete assignment');
@@ -220,12 +257,12 @@ export const jobAssignmentApi = {
 
 export const calendarsApi = {
   async getAll(): Promise<CalendarSource[]> {
-    const res = await fetch(`${API_URL}/api/calendars`);
+    const res = await authFetch(`${API_URL}/api/calendars`);
     if (!res.ok) throw new Error('Failed to fetch calendars');
     return res.json();
   },
   async create(item: Omit<CalendarSource, 'id' | 'displayOrder'>): Promise<CalendarSource> {
-    const res = await fetch(`${API_URL}/api/calendars`, {
+    const res = await authFetch(`${API_URL}/api/calendars`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(item),
@@ -234,7 +271,7 @@ export const calendarsApi = {
     return res.json();
   },
   async update(id: number, item: CalendarSource): Promise<void> {
-    const res = await fetch(`${API_URL}/api/calendars/${id}`, {
+    const res = await authFetch(`${API_URL}/api/calendars/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(item),
@@ -242,11 +279,11 @@ export const calendarsApi = {
     if (!res.ok) throw new Error('Failed to update calendar');
   },
   async delete(id: number): Promise<void> {
-    const res = await fetch(`${API_URL}/api/calendars/${id}`, { method: 'DELETE' });
+    const res = await authFetch(`${API_URL}/api/calendars/${id}`, { method: 'DELETE' });
     if (!res.ok) throw new Error('Failed to delete calendar');
   },
   async updateOrder(order: number[]): Promise<void> {
-    const res = await fetch(`${API_URL}/api/calendars/order`, {
+    const res = await authFetch(`${API_URL}/api/calendars/order`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(order),
@@ -257,12 +294,12 @@ export const calendarsApi = {
 
 export const siteSettingsApi = {
   async get(): Promise<SiteSettings> {
-    const res = await fetch(`${API_URL}/api/sitesettings`);
+    const res = await authFetch(`${API_URL}/api/sitesettings`);
     if (!res.ok) throw new Error('Failed to fetch site settings');
     return res.json();
   },
   async update(settings: SiteSettings): Promise<void> {
-    const res = await fetch(`${API_URL}/api/sitesettings`, {
+    const res = await authFetch(`${API_URL}/api/sitesettings`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(settings),
@@ -275,7 +312,7 @@ export const calendarEventsApi = {
   async get(start: string, end: string, includeIds?: number[]): Promise<CalendarEventItem[]> {
     const params = new URLSearchParams({ start, end });
     if (includeIds && includeIds.length > 0) params.set('include', includeIds.join(','));
-    const res = await fetch(`${API_URL}/api/calendar/events?${params.toString()}`);
+    const res = await authFetch(`${API_URL}/api/calendar/events?${params.toString()}`);
     if (!res.ok) throw new Error('Failed to fetch calendar events');
     return res.json();
   },
@@ -283,12 +320,12 @@ export const calendarEventsApi = {
 
 export const userApi = {
   async getAll(): Promise<User[]> {
-    const response = await fetch(`${API_URL}/api/users`);
+    const response = await authFetch(`${API_URL}/api/users`);
     if (!response.ok) throw new Error('Failed to fetch users');
     return response.json();
   },
   async create(user: Omit<User, 'id'>): Promise<User> {
-    const response = await fetch(`${API_URL}/api/users`, {
+    const response = await authFetch(`${API_URL}/api/users`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(user),
@@ -297,7 +334,7 @@ export const userApi = {
     return response.json();
   },
   async update(id: number, user: User): Promise<void> {
-    const response = await fetch(`${API_URL}/api/users/${id}`, {
+    const response = await authFetch(`${API_URL}/api/users/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(user),
@@ -305,21 +342,28 @@ export const userApi = {
     if (!response.ok) throw new Error('Failed to update user');
   },
   async delete(id: number): Promise<void> {
-    const response = await fetch(`${API_URL}/api/users/${id}`, { method: 'DELETE' });
+    const response = await authFetch(`${API_URL}/api/users/${id}`, { method: 'DELETE' });
     if (!response.ok) throw new Error('Failed to delete user');
   },
   async updateOrder(order: number[]): Promise<void> {
-    const response = await fetch(`${API_URL}/api/users/order`, {
+    const response = await authFetch(`${API_URL}/api/users/order`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(order),
     });
     if (!response.ok) throw new Error('Failed to update user order');
   },
+  async toggleHideCompleted(id: number): Promise<{ hideCompletedInKiosk: boolean }> {
+    const response = await authFetch(`${API_URL}/api/users/${id}/hide-completed`, {
+      method: 'PATCH',
+    });
+    if (!response.ok) throw new Error('Failed to toggle hide completed');
+    return response.json();
+  },
   async uploadAvatar(id: number, file: File): Promise<string> {
     const formData = new FormData();
     formData.append('file', file);
-    const response = await fetch(`${API_URL}/api/users/${id}/avatar`, {
+    const response = await authFetch(`${API_URL}/api/users/${id}/avatar`, {
       method: 'POST',
       body: formData,
     });
@@ -328,7 +372,7 @@ export const userApi = {
     return data.avatarUrl as string;
   },
   async deleteAvatar(id: number): Promise<void> {
-    const response = await fetch(`${API_URL}/api/users/${id}/avatar`, { method: 'DELETE' });
+    const response = await authFetch(`${API_URL}/api/users/${id}/avatar`, { method: 'DELETE' });
     if (!response.ok) throw new Error('Failed to delete avatar');
   },
 };
@@ -355,17 +399,17 @@ export interface ShoppingList {
 
 export const shoppingListApi = {
   async getAll(): Promise<ShoppingList[]> {
-    const response = await fetch(`${API_URL}/api/shoppinglists`);
+    const response = await authFetch(`${API_URL}/api/shoppinglists`);
     if (!response.ok) throw new Error('Failed to fetch shopping lists');
     return response.json();
   },
   async getById(id: number): Promise<ShoppingList> {
-    const response = await fetch(`${API_URL}/api/shoppinglists/${id}`);
+    const response = await authFetch(`${API_URL}/api/shoppinglists/${id}`);
     if (!response.ok) throw new Error('Failed to fetch shopping list');
     return response.json();
   },
   async create(list: Omit<ShoppingList, 'id' | 'items'>): Promise<ShoppingList> {
-    const response = await fetch(`${API_URL}/api/shoppinglists`, {
+    const response = await authFetch(`${API_URL}/api/shoppinglists`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(list),
@@ -374,7 +418,7 @@ export const shoppingListApi = {
     return response.json();
   },
   async update(id: number, list: ShoppingList): Promise<void> {
-    const response = await fetch(`${API_URL}/api/shoppinglists/${id}`, {
+    const response = await authFetch(`${API_URL}/api/shoppinglists/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(list),
@@ -382,11 +426,11 @@ export const shoppingListApi = {
     if (!response.ok) throw new Error('Failed to update shopping list');
   },
   async delete(id: number): Promise<void> {
-    const response = await fetch(`${API_URL}/api/shoppinglists/${id}`, { method: 'DELETE' });
+    const response = await authFetch(`${API_URL}/api/shoppinglists/${id}`, { method: 'DELETE' });
     if (!response.ok) throw new Error('Failed to delete shopping list');
   },
   async updateOrder(order: number[]): Promise<void> {
-    const response = await fetch(`${API_URL}/api/shoppinglists/order`, {
+    const response = await authFetch(`${API_URL}/api/shoppinglists/order`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(order),
@@ -396,7 +440,7 @@ export const shoppingListApi = {
   async uploadAvatar(id: number, file: File): Promise<string> {
     const formData = new FormData();
     formData.append('file', file);
-    const response = await fetch(`${API_URL}/api/shoppinglists/${id}/avatar`, {
+    const response = await authFetch(`${API_URL}/api/shoppinglists/${id}/avatar`, {
       method: 'POST',
       body: formData,
     });
@@ -405,19 +449,42 @@ export const shoppingListApi = {
     return data.avatarUrl as string;
   },
   async deleteAvatar(id: number): Promise<void> {
-    const response = await fetch(`${API_URL}/api/shoppinglists/${id}/avatar`, { method: 'DELETE' });
+    const response = await authFetch(`${API_URL}/api/shoppinglists/${id}/avatar`, { method: 'DELETE' });
     if (!response.ok) throw new Error('Failed to delete avatar');
+  },
+};
+
+export const kioskTokenApi = {
+  async getAll(): Promise<KioskToken[]> {
+    const response = await authFetch(`${API_URL}/api/auth/kiosk/tokens`);
+    if (!response.ok) throw new Error('Failed to fetch kiosk tokens');
+    return response.json();
+  },
+  async create(name: string): Promise<KioskTokenResponse> {
+    const response = await authFetch(`${API_URL}/api/auth/kiosk/tokens`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+    if (!response.ok) throw new Error('Failed to create kiosk token');
+    return response.json();
+  },
+  async revoke(id: number): Promise<void> {
+    const response = await authFetch(`${API_URL}/api/auth/kiosk/tokens/${id}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error('Failed to revoke kiosk token');
   },
 };
 
 export const shoppingItemApi = {
   async getAll(listId: number): Promise<ShoppingItem[]> {
-    const response = await fetch(`${API_URL}/api/shoppinglists/${listId}/items`);
+    const response = await authFetch(`${API_URL}/api/shoppinglists/${listId}/items`);
     if (!response.ok) throw new Error('Failed to fetch shopping items');
     return response.json();
   },
   async create(listId: number, item: Omit<ShoppingItem, 'id' | 'shoppingListId' | 'createdAt'>): Promise<ShoppingItem> {
-    const response = await fetch(`${API_URL}/api/shoppinglists/${listId}/items`, {
+    const response = await authFetch(`${API_URL}/api/shoppinglists/${listId}/items`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(item),
@@ -426,7 +493,7 @@ export const shoppingItemApi = {
     return response.json();
   },
   async update(listId: number, id: number, item: ShoppingItem): Promise<void> {
-    const response = await fetch(`${API_URL}/api/shoppinglists/${listId}/items/${id}`, {
+    const response = await authFetch(`${API_URL}/api/shoppinglists/${listId}/items/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(item),
@@ -434,25 +501,25 @@ export const shoppingItemApi = {
     if (!response.ok) throw new Error('Failed to update shopping item');
   },
   async delete(listId: number, id: number): Promise<void> {
-    const response = await fetch(`${API_URL}/api/shoppinglists/${listId}/items/${id}`, { method: 'DELETE' });
+    const response = await authFetch(`${API_URL}/api/shoppinglists/${listId}/items/${id}`, { method: 'DELETE' });
     if (!response.ok) throw new Error('Failed to delete shopping item');
   },
   async toggleBought(listId: number, id: number): Promise<ShoppingItem> {
-    const response = await fetch(`${API_URL}/api/shoppinglists/${listId}/items/${id}/toggle`, {
+    const response = await authFetch(`${API_URL}/api/shoppinglists/${listId}/items/${id}/toggle`, {
       method: 'POST',
     });
     if (!response.ok) throw new Error('Failed to toggle item');
     return response.json();
   },
   async toggleImportant(listId: number, id: number): Promise<ShoppingItem> {
-    const response = await fetch(`${API_URL}/api/shoppinglists/${listId}/items/${id}/important`, {
+    const response = await authFetch(`${API_URL}/api/shoppinglists/${listId}/items/${id}/important`, {
       method: 'POST',
     });
     if (!response.ok) throw new Error('Failed to toggle important');
     return response.json();
   },
   async updateOrder(listId: number, order: number[]): Promise<void> {
-    const response = await fetch(`${API_URL}/api/shoppinglists/${listId}/items/order`, {
+    const response = await authFetch(`${API_URL}/api/shoppinglists/${listId}/items/order`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(order),
@@ -460,7 +527,7 @@ export const shoppingItemApi = {
     if (!response.ok) throw new Error('Failed to update item order');
   },
   async clearBought(listId: number): Promise<void> {
-    const response = await fetch(`${API_URL}/api/shoppinglists/${listId}/items/bought`, { method: 'DELETE' });
+    const response = await authFetch(`${API_URL}/api/shoppinglists/${listId}/items/bought`, { method: 'DELETE' });
     if (!response.ok) throw new Error('Failed to clear bought items');
   },
 };

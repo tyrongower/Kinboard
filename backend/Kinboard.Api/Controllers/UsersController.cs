@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Kinboard.Api.Data;
 using Kinboard.Api.Models;
@@ -15,6 +16,7 @@ namespace Kinboard.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize] // Require authentication for all endpoints
 public class UsersController : ControllerBase
 {
     private readonly AppDbContext _context;
@@ -43,6 +45,18 @@ public class UsersController : ControllerBase
                 .OrderBy(u => u.DisplayOrder)
                 .ThenBy(u => u.DisplayName)
                 .ToListAsync();
+
+            // Don't expose password hashes or admin status to kiosks
+            if (User.IsInRole("kiosk"))
+            {
+                foreach (var user in users)
+                {
+                    user.PasswordHash = null;
+                    user.Email = null;
+                    user.IsAdmin = false;
+                }
+            }
+
             _logger.LogInformation("Retrieved {Count} users", users.Count);
             return users;
         }
@@ -74,44 +88,111 @@ public class UsersController : ControllerBase
         }
     }
 
+    public class CreateUserRequest
+    {
+        public string DisplayName { get; set; } = string.Empty;
+        public string ColorHex { get; set; } = "#777777";
+        public string? Email { get; set; }
+        public bool IsAdmin { get; set; } = false;
+        public string? Password { get; set; } // Plain text password, will be hashed
+    }
+
     [HttpPost]
-    public async Task<ActionResult<User>> CreateUser(User user)
+    [Authorize(Roles = "admin")] // Admin only
+    public async Task<ActionResult<User>> CreateUser([FromBody] CreateUserRequest request)
     {
         try
         {
-            _logger.LogInformation("Creating user: {Username}", user.Username);
+            _logger.LogInformation("Creating user: {DisplayName}", request.DisplayName);
+
             // Basic normalization: ensure color starts with '#'
-            if (!string.IsNullOrWhiteSpace(user.ColorHex) && !user.ColorHex.StartsWith('#'))
+            var colorHex = request.ColorHex;
+            if (!string.IsNullOrWhiteSpace(colorHex) && !colorHex.StartsWith('#'))
             {
-                user.ColorHex = "#" + user.ColorHex.Trim();
+                colorHex = "#" + colorHex.Trim();
             }
+
+            // Hash password if provided
+            string? passwordHash = null;
+            if (!string.IsNullOrWhiteSpace(request.Password))
+            {
+                if (request.Password.Length < 8)
+                {
+                    return BadRequest(new { message = "Password must be at least 8 characters long" });
+                }
+                passwordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
+            }
+
+            var user = new User
+            {
+                DisplayName = request.DisplayName,
+                ColorHex = colorHex,
+                Email = request.Email,
+                IsAdmin = request.IsAdmin,
+                PasswordHash = passwordHash
+            };
 
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
             _logger.LogInformation("User created successfully with ID: {Id}", user.Id);
+
+            // Don't return password hash
+            user.PasswordHash = null;
             return CreatedAtAction(nameof(GetUser), new { id = user.Id }, user);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error creating user: {Username}", user.Username);
+            _logger.LogError(ex, "Error creating user: {DisplayName}", request.DisplayName);
             throw;
         }
     }
 
-    [HttpPut("{id}")]
-    public async Task<IActionResult> UpdateUser(int id, User user)
+    public class UpdateUserRequest
     {
-        if (id != user.Id) return BadRequest();
+        public string DisplayName { get; set; } = string.Empty;
+        public string ColorHex { get; set; } = "#777777";
+        public string? Email { get; set; }
+        public bool IsAdmin { get; set; } = false;
+        public string? Password { get; set; } // If provided, will update password
+    }
 
+    [HttpPut("{id}")]
+    [Authorize(Roles = "admin")] // Admin only
+    public async Task<IActionResult> UpdateUser(int id, [FromBody] UpdateUserRequest request)
+    {
         try
         {
             _logger.LogInformation("Updating user ID: {Id}", id);
-            if (!string.IsNullOrWhiteSpace(user.ColorHex) && !user.ColorHex.StartsWith('#'))
+
+            var user = await _context.Users.FindAsync(id);
+            if (user == null)
             {
-                user.ColorHex = "#" + user.ColorHex.Trim();
+                return NotFound();
             }
 
-            _context.Entry(user).State = EntityState.Modified;
+            // Basic normalization: ensure color starts with '#'
+            var colorHex = request.ColorHex;
+            if (!string.IsNullOrWhiteSpace(colorHex) && !colorHex.StartsWith('#'))
+            {
+                colorHex = "#" + colorHex.Trim();
+            }
+
+            // Update fields
+            user.DisplayName = request.DisplayName;
+            user.ColorHex = colorHex;
+            user.Email = request.Email;
+            user.IsAdmin = request.IsAdmin;
+
+            // Update password if provided
+            if (!string.IsNullOrWhiteSpace(request.Password))
+            {
+                if (request.Password.Length < 8)
+                {
+                    return BadRequest(new { message = "Password must be at least 8 characters long" });
+                }
+                user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
+            }
+
             await _context.SaveChangesAsync();
             _logger.LogInformation("User ID {Id} updated successfully", id);
             return NoContent();
@@ -119,7 +200,7 @@ public class UsersController : ControllerBase
         catch (DbUpdateException ex)
         {
             _logger.LogError(ex, "Database error updating user ID: {Id}", id);
-            // Likely uniqueness violation on Username
+            // Database update error
             return Problem(ex.Message);
         }
         catch (Exception ex)
@@ -133,6 +214,7 @@ public class UsersController : ControllerBase
     /// Bulk update display order. Body is array of user IDs in desired order.
     /// </summary>
     [HttpPut("order")]
+    [Authorize(Roles = "admin")] // Admin only
     public async Task<IActionResult> UpdateOrder([FromBody] int[] orderedIds)
     {
         if (orderedIds == null || orderedIds.Length == 0)
@@ -152,6 +234,7 @@ public class UsersController : ControllerBase
     /// Upload avatar image for a user. Validates and processes to a 256x256 WebP at a stable path.
     /// </summary>
     [HttpPost("{id}/avatar")]
+    [Authorize(Roles = "admin")] // Admin only
     [RequestSizeLimit(MaxAvatarBytes)]
     public async Task<IActionResult> UploadAvatar(int id, IFormFile file)
     {
@@ -214,6 +297,7 @@ public class UsersController : ControllerBase
     /// Fetch avatar from a remote URL, validate/process identically to upload, and store locally.
     /// </summary>
     [HttpPost("{id}/avatar/fetch")]
+    [Authorize(Roles = "admin")] // Admin only
     public async Task<IActionResult> FetchAvatar(int id, [FromBody] FetchAvatarRequest body, [FromServices] IHttpClientFactory httpFactory)
     {
         var user = await _context.Users.FindAsync(id);
@@ -334,11 +418,12 @@ public class UsersController : ControllerBase
     /// Delete avatar for a user
     /// </summary>
     [HttpDelete("{id}/avatar")]
+    [Authorize(Roles = "admin")] // Admin only
     public async Task<IActionResult> DeleteAvatar(int id)
     {
         var user = await _context.Users.FindAsync(id);
         if (user == null) return NotFound();
-        
+
         // Delete avatar file
         try
         {
@@ -350,13 +435,30 @@ public class UsersController : ControllerBase
             }
         }
         catch { /* ignore file delete errors */ }
-        
+
         user.AvatarUrl = null;
         await _context.SaveChangesAsync();
         return NoContent();
     }
 
+    /// <summary>
+    /// Toggle hideCompletedInKiosk for a user (accessible by both admin and kiosk).
+    /// </summary>
+    [HttpPatch("{id}/hide-completed")]
+    [Authorize] // Both admin and kiosk can access
+    public async Task<IActionResult> ToggleHideCompleted(int id)
+    {
+        var user = await _context.Users.FindAsync(id);
+        if (user == null) return NotFound();
+
+        user.HideCompletedInKiosk = !user.HideCompletedInKiosk;
+        await _context.SaveChangesAsync();
+
+        return Ok(new { hideCompletedInKiosk = user.HideCompletedInKiosk });
+    }
+
     [HttpDelete("{id}")]
+    [Authorize(Roles = "admin")] // Admin only
     public async Task<IActionResult> DeleteUser(int id)
     {
         var user = await _context.Users.FindAsync(id);

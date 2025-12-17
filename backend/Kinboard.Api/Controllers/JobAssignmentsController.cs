@@ -1,6 +1,7 @@
 ﻿using Kinboard.Api.Data;
 using Kinboard.Api.Dtos;
 using Kinboard.Api.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,6 +9,7 @@ namespace Kinboard.Api.Controllers;
 
 [ApiController]
 [Route("api/jobs/{jobId}/assignments")]
+[Authorize] // Require authentication (admin + kiosk)
 public class JobAssignmentsController : ControllerBase
 {
     private readonly AppDbContext _context;
@@ -337,7 +339,6 @@ public class JobAssignmentsController : ControllerBase
             User = a.User == null ? null : new UserDto
             {
                 Id = a.User.Id,
-                Username = a.User.Username,
                 DisplayName = a.User.DisplayName,
                 ColorHex = a.User.ColorHex,
                 AvatarUrl = a.User.AvatarUrl,

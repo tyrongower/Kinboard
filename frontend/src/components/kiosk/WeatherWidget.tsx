@@ -73,7 +73,14 @@ export default function WeatherWidget() {
 
   const loadWeather = async (silent = false) => {
     try {
-      const response = await fetch(`/api/weather`);
+      // Get access token from localStorage
+      const accessToken = localStorage.getItem('accessToken');
+      const headers: HeadersInit = {};
+      if (accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`;
+      }
+
+      const response = await fetch(`/api/weather`, { headers });
       if (!response.ok) {
         setWeather(null);
         const text = await response.text();
@@ -183,11 +190,11 @@ export default function WeatherWidget() {
             return (
               <div
                 key={idx}
-                className="flex flex-col items-center gap-0.5 px-1 py-0.5 rounded-md border w-[44px] cursor-pointer"
+                className="flex flex-col items-center gap-0.5 px-1.5 py-0.5 rounded-md border w-[56px] cursor-pointer flex-shrink-0"
                 style={{ background: 'var(--color-surface)', borderColor: 'var(--color-divider)' }}
                 onClick={() => openReport(idx)}
               >
-                <div className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
+                <div className="text-[10px] whitespace-nowrap" style={{ color: 'var(--color-text-muted)' }}>
                   {formatDay(d.date)}
                 </div>
 
@@ -197,11 +204,11 @@ export default function WeatherWidget() {
                   <div className="w-5 h-5 rounded" style={{ background: 'var(--color-bg-elevated)' }} />
                 )}
 
-                <div className="text-[10px] leading-none tabular-nums" style={{ color: 'var(--color-text)' }}>
+                <div className="text-[10px] leading-none tabular-nums whitespace-nowrap" style={{ color: 'var(--color-text)' }}>
                   {Math.round(d.minTempC)}°/{Math.round(d.maxTempC)}°
                 </div>
 
-                <div className="text-[10px] leading-none tabular-nums" style={{ color: 'var(--color-text-secondary)' }}>
+                <div className="text-[10px] leading-none tabular-nums whitespace-nowrap" style={{ color: 'var(--color-text-secondary)' }}>
                   💧{chance}%
                 </div>
               </div>

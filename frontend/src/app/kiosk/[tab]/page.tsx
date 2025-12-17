@@ -6,6 +6,8 @@ import CalendarTab from '@/components/kiosk/CalendarTab';
 import JobsTab from '@/components/kiosk/JobsTab';
 import ShoppingTab from '@/components/kiosk/ShoppingTab';
 import WeatherWidget from '@/components/kiosk/WeatherWidget';
+import { useAuth } from '@/contexts/AuthContext';
+import Link from 'next/link';
 
 const tabs = [
   { id: 'calendar', label: 'Calendar', icon: '📅' },
@@ -22,6 +24,7 @@ function getTabIndex(slug?: string): number {
 export default function KioskPage() {
   const params = useParams<{ tab?: string }>();
   const router = useRouter();
+  const { role } = useAuth();
 
   const initialIndex = useMemo(() => getTabIndex(params?.tab), [params?.tab]);
   const [currentTab, setCurrentTab] = useState<number>(initialIndex);
@@ -154,6 +157,16 @@ export default function KioskPage() {
         <div className="hidden md:block shrink-0">
           <WeatherWidget />
         </div>
+
+        {role === 'admin' && (
+          <Link
+            href="/admin/jobs"
+            className="btn btn-secondary text-sm shrink-0"
+            style={{ minHeight: 'var(--touch-target)' }}
+          >
+            Admin →
+          </Link>
+        )}
       </header>
 
       <header
@@ -161,11 +174,8 @@ export default function KioskPage() {
         style={{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-divider)' }}
       >
         <div className="flex items-center gap-3 shrink-0">
-          <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center text-xl font-bold"
-            style={{ background: 'var(--color-primary-muted)', color: 'var(--color-primary)' }}
-          >
-            K
+          <div className="w-10 h-10">
+            <img src="/logo.svg" alt="Kinboard Logo" className="w-full h-full" />
           </div>
           <span className="hidden sm:block font-semibold" style={{ color: 'var(--color-text)' }}>Kinboard</span>
         </div>
@@ -268,6 +278,18 @@ export default function KioskPage() {
               <div className="mt-2">
                 <WeatherWidget />
               </div>
+
+              {role === 'admin' && (
+                <div className="flex justify-center pt-2">
+                  <Link
+                    href="/admin/jobs"
+                    className="btn btn-primary w-full"
+                    style={{ minHeight: 'var(--touch-target-lg)' }}
+                  >
+                    Go to Admin Dashboard
+                  </Link>
+                </div>
+              )}
 
               <div className="flex justify-center pt-2">
                 <button

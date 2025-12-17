@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Kinboard.Api.Data;
@@ -11,6 +12,7 @@ namespace Kinboard.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize] // Require authentication (admin + kiosk)
 public class JobsController : ControllerBase
 {
     private readonly AppDbContext _context;
@@ -52,17 +54,17 @@ public class JobsController : ControllerBase
                     .ThenInclude(a => a.User)
                 .ToListAsync();
 
-            var result = allChores.Where(c => 
-                RecurrenceEvaluator.OccursOn(c, targetDateOnly) || 
+            var result = allChores.Where(c =>
+                RecurrenceEvaluator.OccursOn(c, targetDateOnly) ||
                 (!c.UseSharedRecurrence && c.Assignments.Any(a => RecurrenceEvaluator.AssignmentOccursOn(a, targetDateOnly)))
             ).ToList();
-            
+
             // Load completions for this date (including assignment-specific completions)
             var choreIds = result.Select(c => c.Id).ToList();
             var completions = await _context.JobCompletions
                 .Where(cc => choreIds.Contains(cc.JobId) && cc.OccurrenceDate.Date == targetDateOnly)
                 .ToListAsync();
-            
+
             // Separate legacy completions (no assignment) from assignment-specific completions
             var legacyCompletionMap = completions
                 .Where(cc => cc.JobAssignmentId == null)
@@ -97,14 +99,14 @@ public class JobsController : ControllerBase
         JobCompletion? completion = null;
         List<JobCompletion>? assignmentCompletions = null;
         DateTime? occurrenceDate = null;
-        
+
         if (!string.IsNullOrEmpty(date) && DateTime.TryParse(date, out var parsedDate))
         {
             occurrenceDate = parsedDate.Date;
             var completions = await _context.JobCompletions
                 .Where(cc => cc.JobId == id && cc.OccurrenceDate.Date == occurrenceDate.Value)
                 .ToListAsync();
-            
+
             completion = completions.FirstOrDefault(cc => cc.JobAssignmentId == null);
             assignmentCompletions = completions.Where(cc => cc.JobAssignmentId != null).ToList();
         }
@@ -113,6 +115,7 @@ public class JobsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "admin")] // Admin only
     public async Task<ActionResult<JobDto>> CreateJob(JobDto dto)
     {
         try
@@ -136,6 +139,7 @@ public class JobsController : ControllerBase
     }
 
     [HttpPut("{id}")]
+    [Authorize(Roles = "admin")] // Admin only
     public async Task<IActionResult> UpdateJob(int id, JobDto dto)
     {
         try
@@ -180,6 +184,7 @@ public class JobsController : ControllerBase
     }
 
     [HttpDelete("{id}")]
+    [Authorize(Roles = "admin")] // Admin only
     public async Task<IActionResult> DeleteJob(int id)
     {
         try
@@ -213,13 +218,13 @@ public class JobsController : ControllerBase
     {
         // Filter assignments based on recurrence when querying by date
         var assignmentsToMap = c.Assignments ?? new List<JobAssignment>();
-        
+
         // When UseSharedRecurrence is false and we have a target date, filter assignments by their individual recurrence
         if (!c.UseSharedRecurrence && occurrenceDate.HasValue)
         {
             assignmentsToMap = assignmentsToMap.Where(a => RecurrenceEvaluator.AssignmentOccursOn(a, occurrenceDate.Value)).ToList();
         }
-        
+
         // Map assignments with their completion status
         var assignments = assignmentsToMap.Select(a => {
             var assignmentCompletion = assignmentCompletions?.FirstOrDefault(ac => ac.JobAssignmentId == a.Id);
@@ -231,7 +236,6 @@ public class JobsController : ControllerBase
                 User = a.User == null ? null : new UserDto
                 {
                     Id = a.User.Id,
-                    Username = a.User.Username,
                     DisplayName = a.User.DisplayName,
                     ColorHex = a.User.ColorHex,
                     AvatarUrl = a.User.AvatarUrl,
@@ -281,7 +285,7 @@ public class JobsController : ControllerBase
         entity.RecurrenceEndDate = dto.RecurrenceIndefinite ? null : dto.RecurrenceEndDate;
         entity.RecurrenceIndefinite = dto.RecurrenceIndefinite;
         entity.UseSharedRecurrence = dto.UseSharedRecurrence;
-        
+
         return Task.CompletedTask;
     }
 

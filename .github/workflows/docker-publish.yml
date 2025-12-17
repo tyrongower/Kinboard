@@ -22,11 +22,23 @@ jobs:
         id: version
         run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
+      - name: Determine tags
+        id: tags
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          TAGS="${{ secrets.DOCKER_USER }}/kinboard:${VERSION}"
+
+          if [[ "${{ github.event.release.prerelease }}" == "true" ]]; then
+            TAGS="${TAGS},${{ secrets.DOCKER_USER }}/kinboard:pre-release"
+          else
+            TAGS="${TAGS},${{ secrets.DOCKER_USER }}/kinboard:latest"
+          fi
+
+          echo "TAGS=${TAGS}" >> $GITHUB_OUTPUT
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          tags: |
-            ${{ secrets.DOCKER_USER }}/kinboard:${{ steps.version.outputs.VERSION }}
-            ${{ secrets.DOCKER_USER }}/kinboard:latest
+          tags: ${{ steps.tags.outputs.TAGS }}

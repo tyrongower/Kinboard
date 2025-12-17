@@ -34,11 +34,8 @@ export default function JobsTab({ selectedDate }: JobsTabProps) {
 
     if (p.userId != null) {
       try {
-        const u = users.find((x) => x.id === p.userId);
-        if (u) {
-          await userApi.update(u.id, { ...u, hideCompletedInKiosk: newValue });
-          setUsers((prev) => prev.map((x) => (x.id === u.id ? { ...x, hideCompletedInKiosk: newValue } : x)));
-        }
+        const result = await userApi.toggleHideCompleted(p.userId);
+        setUsers((prev) => prev.map((x) => (x.id === p.userId ? { ...x, hideCompletedInKiosk: result.hideCompletedInKiosk } : x)));
       } catch (e) {
         console.error('Failed to persist hideCompletedInKiosk:', e);
         setHideCompletedByPerson((prev) => ({ ...prev, [key]: !newValue }));

@@ -7,11 +7,13 @@ import JobsAdmin from '@/components/admin/JobsAdmin';
 import CalendarsAdmin from '@/components/admin/CalendarsAdmin';
 import SiteSettingsAdmin from '@/components/admin/SiteSettingsAdmin';
 import ShoppingAdmin from '@/components/admin/ShoppingAdmin';
+import KioskTokensAdmin from '@/components/admin/KioskTokensAdmin';
 import Link from "next/link";
 
 const tabs = [
   { id: 'jobs', label: 'Jobs', icon: '✓' },
   { id: 'users', label: 'Users', icon: '👥' },
+  { id: 'kiosk', label: 'Kiosk Tokens', icon: '🔑' },
   { id: 'calendars', label: 'Calendars', icon: '📅' },
   { id: 'shopping', label: 'Shopping', icon: '🛒' },
   { id: 'settings', label: 'Settings', icon: '⚙️' },
@@ -64,11 +66,8 @@ export default function AdminTabbedPage() {
         }}
       >
         <div className="flex items-center gap-3 mr-0 sm:mr-4 shrink-0">
-          <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center text-xl font-bold"
-            style={{ background: 'var(--color-primary-muted)', color: 'var(--color-primary)' }}
-          >
-            K
+          <div className="w-10 h-10">
+            <img src="/logo.svg" alt="Kinboard Logo" className="w-full h-full" />
           </div>
           <div className="hidden sm:block">
             <h1 className="text-lg font-semibold" style={{ color: 'var(--color-text)' }}>
@@ -80,7 +79,7 @@ export default function AdminTabbedPage() {
           </div>
         </div>
 
-        <nav className="tab-list flex-1 max-w-full sm:max-w-xl min-w-0 order-last sm:order-0 mt-2 sm:mt-0">
+        <nav className="tab-list flex-1 min-w-0 order-last sm:order-0 mt-2 sm:mt-0">
           {tabs.map((tab, index) => (
             <button
               key={tab.id}
@@ -109,11 +108,8 @@ export default function AdminTabbedPage() {
         style={{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-divider)' }}
       >
         <div className="flex items-center gap-3 shrink-0">
-          <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center text-xl font-bold"
-            style={{ background: 'var(--color-primary-muted)', color: 'var(--color-primary)' }}
-          >
-            K
+          <div className="w-10 h-10">
+            <img src="/logo.svg" alt="Kinboard Logo" className="w-full h-full" />
           </div>
           <span className="hidden sm:block font-semibold" style={{ color: 'var(--color-text)' }}>Kinboard</span>
         </div>
@@ -224,6 +220,9 @@ export default function AdminTabbedPage() {
               </div>
               <div className={currentTabId === 'users' ? '' : 'hidden'}>
                 <UsersAdmin />
+              </div>
+              <div className={currentTabId === 'kiosk' ? '' : 'hidden'}>
+                <KioskTokensAdmin />
               </div>
               <div className={currentTabId === 'calendars' ? '' : 'hidden'}>
                 <CalendarsAdmin />

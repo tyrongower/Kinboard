@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Kinboard.Api.Data;
 using Kinboard.Api.Models;
@@ -8,6 +9,7 @@ namespace Kinboard.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize] // Require authentication (admin + kiosk)
 public class WeatherController : ControllerBase
 {
     private readonly AppDbContext _context;

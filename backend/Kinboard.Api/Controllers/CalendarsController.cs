@@ -1,12 +1,15 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Kinboard.Api.Data;
 using Kinboard.Api.Models;
+using Kinboard.Api.Dtos;
 
 namespace Kinboard.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize] // Require authentication
 public class CalendarsController : ControllerBase
 {
     private readonly AppDbContext _context;
@@ -19,7 +22,7 @@ public class CalendarsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<CalendarSource>>> GetAll()
+    public async Task<ActionResult> GetAll()
     {
         try
         {
@@ -30,6 +33,22 @@ public class CalendarsController : ControllerBase
                 .ThenBy(c => c.Name)
                 .ToListAsync();
             _logger.LogInformation("Retrieved {Count} calendar sources", items.Count);
+
+            // Return different data based on role - kiosk users don't need iCal URLs
+            if (User.IsInRole("kiosk"))
+            {
+                var dtos = items.Select(c => new CalendarSourceDto
+                {
+                    Id = c.Id,
+                    Name = c.Name,
+                    ColorHex = c.ColorHex,
+                    Enabled = c.Enabled,
+                    DisplayOrder = c.DisplayOrder
+                }).ToList();
+                return Ok(dtos);
+            }
+
+            // Admin users get full calendar sources including iCal URLs
             return Ok(items);
         }
         catch (Exception ex)
@@ -48,6 +67,7 @@ public class CalendarsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "admin")] // Admin only
     public async Task<ActionResult<CalendarSource>> Create(CalendarSource source)
     {
         try
@@ -67,6 +87,7 @@ public class CalendarsController : ControllerBase
     }
 
     [HttpPut("{id}")]
+    [Authorize(Roles = "admin")] // Admin only
     public async Task<IActionResult> Update(int id, CalendarSource source)
     {
         if (id != source.Id) return BadRequest();
@@ -87,6 +108,7 @@ public class CalendarsController : ControllerBase
     }
 
     [HttpPut("order")]
+    [Authorize(Roles = "admin")] // Admin only
     public async Task<IActionResult> UpdateOrder([FromBody] int[] orderedIds)
     {
         if (orderedIds == null || orderedIds.Length == 0) return BadRequest("No ids provided");
@@ -111,6 +133,7 @@ public class CalendarsController : ControllerBase
     }
 
     [HttpDelete("{id}")]
+    [Authorize(Roles = "admin")] // Admin only
     public async Task<IActionResult> Delete(int id)
     {
         try

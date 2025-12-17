@@ -4,9 +4,6 @@ public class User
 {
     public int Id { get; set; }
 
-    // A stable key used for linking from jobs (e.g., username or short code)
-    public string Username { get; set; } = string.Empty;
-
     // Friendly name to display in UI
     public string DisplayName { get; set; } = string.Empty;
 
@@ -21,7 +18,21 @@ public class User
 
     // Display order for kiosk and admin lists (lower first)
     public int DisplayOrder { get; set; } = 0;
-    
+
+    // --- Authentication fields (optional, only for admin users) ---
+
+    // Email for admin login (null for non-admin users)
+    public string? Email { get; set; }
+
+    // Hashed password for admin login (null for non-admin users)
+    public string? PasswordHash { get; set; }
+
+    // Is this user an admin? (can log into admin portal)
+    public bool IsAdmin { get; set; } = false;
+
     // Navigation collection for job assignments
     public ICollection<JobAssignment> JobAssignments { get; set; } = new List<JobAssignment>();
+
+    // Navigation collection for refresh tokens (admin only)
+    public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
 }

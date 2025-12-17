@@ -92,6 +92,7 @@ export default function UsersAdmin() {
     try {
       // Prepare request payload
       const payload = {
+        ...(editing && { id: editing.id }),
         displayName: form.displayName,
         colorHex: form.colorHex,
         email: form.email || null,
@@ -100,7 +101,7 @@ export default function UsersAdmin() {
       };
 
       if (editing) {
-        await userApi.update(editing.id, payload);
+        await userApi.update(editing.id, payload as User);
         if (avatarFile) {
           if (avatarFile.size > 5 * 1024 * 1024) throw new Error('Avatar too large (max 5 MB)');
           const url = await userApi.uploadAvatar(editing.id, avatarFile);

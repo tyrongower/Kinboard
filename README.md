@@ -1,17 +1,38 @@
 ## Kinboard
-
+> [!IMPORTANT]
 > Important experimental notice
 >
 > This project was implemented with heavy use of AI as part of an experiment. The codebase has not yet undergone full human review. The goals are twofold: (1) solve practical family/household management needs (chores, calendars, shopping, kiosk) and (2) explore the capabilities and limitations of AI as a software developer. Prominent AI models used include Claude Opus 4.5, GPT-5.2, and Claude Sonnet 4.5.
 
 Family household dashboard with chores, calendar, shopping lists, and kiosk display.
 
+### Why Kinboard?
+
+Kin means family — the people you share life with.
+A board is a shared surface — visible, central, and used together.
+
+Kinboard brings family planning into one shared place, where chores, schedules, and lists are seen by everyone and done together.
+
+
 ### Features
 - Chores/jobs with assignments, ordering, recurrence, and completion tracking
 - Shared calendar aggregation via iCal sources and color coding
 - Shopping lists with avatars, ordering, and quick toggles
-- Kiosk mode for wall displays (read‑only, auto‑refresh)
+- Kiosk mode for wall displays
 - Admin UI for management
+-
+### Calendar
+Admin ui allows adding iCal sources and color coding.
+<img src="https://raw.githubusercontent.com/tyrongower/Kinboard/refs/heads/main/readme/calendar.png" width="800"  alt=""/>
+
+### Jobs
+Admin ui allows adding chores and assigning them to people with recurrence.
+<img src="https://raw.githubusercontent.com/tyrongower/Kinboard/refs/heads/main/readme/jobs.png" width="800"  alt=""/>
+
+### Shopping
+Admin ui allows for the creation of shopping lists. Kiosk allows adding and removing items from the shopping list.
+<img src="https://raw.githubusercontent.com/tyrongower/Kinboard/refs/heads/main/readme/shopping.png" width="800"  alt=""/>
+
 
 ### Tech stack
 - Backend: .NET 9 (ASP.NET Core), Entity Framework Core, SQLite by default

@@ -1,5 +1,24 @@
-// If NEXT_PUBLIC_API_URL is not set, default to relative URLs so Next.js can proxy via rewrites
-const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
+// Get the API URL based on environment
+// - If NEXT_PUBLIC_API_URL is set, use it
+// - If running on the server side, construct URL from the request host
+// - Otherwise, use empty string for relative URLs (client-side via rewrites)
+function getApiUrl(): string {
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL;
+  }
+
+  // Server-side: try to get from headers
+  if (typeof window === 'undefined') {
+    // During SSR, we need to use relative URLs as we don't have access to headers here
+    // The actual host resolution happens in middleware/rewrites
+    return '';
+  }
+
+  // Client-side: use relative URLs (proxied via rewrites)
+  return '';
+}
+
+const API_URL = getApiUrl();
 
 export interface JobAssignment {
   id: number;

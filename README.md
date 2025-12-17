@@ -80,13 +80,15 @@ This uses SQLite by default (see `appsettings.Development.json`). Swagger/OpenAP
 ```
 cd frontend
 npm install
-# Either set API URL explicitly, or rely on relative fetches for a proxy setup
-set NEXT_PUBLIC_API_URL=http://localhost:5000   # Windows PowerShell example
+# For development, set the backend port (defaults to 5000)
+set BACKEND_PORT=5197   # Windows PowerShell - matches dev backend port
+# Or set API URL explicitly
+set NEXT_PUBLIC_API_URL=http://localhost:5197   # Windows PowerShell example
 npm run dev
 ```
 Visit http://localhost:3000
 
-Tip: If `NEXT_PUBLIC_API_URL` is not set, the frontend will call relative paths (e.g., `/api/...`). Configure a dev proxy or run the frontend on the same host that can reach the backend under the same origin.
+Tip: If `NEXT_PUBLIC_API_URL` is not set, the frontend proxy will route requests to `http://{hostname}:{BACKEND_PORT}`. Set `BACKEND_PORT` env var (defaults to 5000 for Docker, use 5197 for local development).
 
 ---
 
@@ -98,7 +100,8 @@ Backend (`backend/Kinboard.Api`):
 - `ASPNETCORE_ENVIRONMENT` (`Development` enables Swagger and permissive CORS)
 
 Frontend (`frontend`):
-- `NEXT_PUBLIC_API_URL` (e.g., `http://localhost:5000`). If omitted, relative URLs are used.
+- `NEXT_PUBLIC_API_URL` (e.g., `http://localhost:5197`). If omitted, proxy routing is used.
+- `BACKEND_PORT` (defaults to `5000`). Used for proxy routing when `NEXT_PUBLIC_API_URL` is not set.
 
 Production samples:
 - See `backend/Kinboard.Api/appsettings.Production.sample.json`

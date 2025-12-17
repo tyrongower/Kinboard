@@ -38,7 +38,7 @@ builder.Services.AddScoped<Kinboard.Api.Services.ICalendarService, Kinboard.Api.
 
 // Configure SQLite database
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=chores.db"));
+    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=kinboard.db"));
 
 // Configure CORS: permissive in Development, strict & configurable otherwise
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
@@ -97,7 +97,7 @@ using (var scope = app.Services.CreateScope())
 
         logger.LogInformation("Checking database connection...");
 
- 
+
         logger.LogInformation("Applying pending migrations...");
         await db.Database.MigrateAsync();
         logger.LogInformation("All pending migrations applied successfully");

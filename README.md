@@ -80,15 +80,71 @@ This uses SQLite by default (see `appsettings.Development.json`). Swagger/OpenAP
 ```
 cd frontend
 npm install
-# For development, set the backend port (defaults to 5000)
-set BACKEND_PORT=5197   # Windows PowerShell - matches dev backend port
-# Or set API URL explicitly
-set NEXT_PUBLIC_API_URL=http://localhost:5197   # Windows PowerShell example
+# Set the API URL to match your backend (defaults to port 5000)
+set NEXT_PUBLIC_API_URL=http://localhost:5197   # Windows PowerShell - adjust port as needed
 npm run dev
 ```
 Visit http://localhost:3000
 
-Tip: If `NEXT_PUBLIC_API_URL` is not set, the frontend proxy will route requests to `http://{hostname}:{BACKEND_PORT}`. Set `BACKEND_PORT` env var (defaults to 5000 for Docker, use 5197 for local development).
+**Note**: For local development, set `NEXT_PUBLIC_API_URL` to match your backend port (typically 5197 for `dotnet run`). If not set, the frontend defaults to port 5000. For Docker deployments, no configuration is needed as the backend defaults to port 5000.
+
+---
+
+## Docker deployment
+
+The easiest way to run Kinboard is using Docker with the published image.
+
+### Using Docker Compose (recommended)
+
+1) Create a `docker-compose.yml` file:
+
+```yaml
+services:
+  kinboard:
+    image: tyrongower/kinboard:latest
+    ports:
+      - "6565:6565"
+    volumes:
+      - kinboard-data:/app/data
+    environment:
+      - Cors__AllowedOrigins__0=http://localhost:6565
+    restart: unless-stopped
+volumes:
+  kinboard-data:
+```
+
+2) Start the service:
+
+```bash
+docker-compose up -d
+```
+
+3) Access Kinboard at http://localhost:6565
+
+The admin UI is at http://localhost:6565/admin and the kiosk display is at http://localhost:6565/kiosk.
+
+### Using Docker CLI
+
+Run Kinboard with a single Docker command:
+
+```bash
+docker run -d \
+  --name kinboard \
+  -p 6565:6565 \
+  -v kinboard-data:/app/data \
+  -e Cors__AllowedOrigins__0=http://localhost:6565 \
+  --restart unless-stopped \
+  tyrongower/kinboard:latest
+```
+
+### Docker environment variables
+
+- `Cors__AllowedOrigins__0`, `Cors__AllowedOrigins__1`, etc.: Allowed CORS origins for production
+- Additional backend configuration can be passed as environment variables (see Configuration section)
+
+### Data persistence
+
+The Docker image stores data in `/app/data` (SQLite database and other persistent files). Mount a volume to this path to persist data across container restarts.
 
 ---
 
@@ -101,7 +157,6 @@ Backend (`backend/Kinboard.Api`):
 
 Frontend (`frontend`):
 - `NEXT_PUBLIC_API_URL` (e.g., `http://localhost:5197`). If omitted, proxy routing is used.
-- `BACKEND_PORT` (defaults to `5000`). Used for proxy routing when `NEXT_PUBLIC_API_URL` is not set.
 
 Production samples:
 - See `backend/Kinboard.Api/appsettings.Production.sample.json`

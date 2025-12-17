@@ -285,61 +285,6 @@ restart_services() {
     log_success "Services restarted"
 }
 
-# Create auto-update cron job
-setup_auto_update() {
-    log_info "Setting up auto-update cron job..."
-
-    # Copy this script to /opt if not already there
-    if [[ "$(realpath "$0")" != "$SCRIPT_PATH" ]]; then
-        cp "$0" "$SCRIPT_PATH"
-        chmod +x "$SCRIPT_PATH"
-    fi
-
-    # Create update checker script
-    cat <<'EOF' > /opt/kinboard-auto-update.sh
-#!/usr/bin/env bash
-
-LOG_FILE="/var/log/kinboard-update.log"
-REPO_URL="https://github.com/tyrongower/Kinboard.git"
-BRANCH="main"
-INSTALL_DIR="/opt/kinboard"
-
-log() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "$LOG_FILE"
-}
-
-# Get commits
-LOCAL_COMMIT=$(git -C "$INSTALL_DIR" rev-parse HEAD 2>/dev/null || echo "none")
-REMOTE_COMMIT=$(git ls-remote "$REPO_URL" "refs/heads/$BRANCH" 2>/dev/null | cut -f1 || echo "none")
-
-if [[ "$LOCAL_COMMIT" != "$REMOTE_COMMIT" ]] && [[ "$REMOTE_COMMIT" != "none" ]]; then
-    log "Update available: $LOCAL_COMMIT -> $REMOTE_COMMIT"
-    log "Starting update..."
-
-    if /opt/kinboard/install/install.sh --update >> "$LOG_FILE" 2>&1; then
-        log "Update completed successfully"
-    else
-        log "Update failed"
-    fi
-else
-    log "No update available (current: ${LOCAL_COMMIT:0:8})"
-fi
-EOF
-
-    chmod +x /opt/kinboard-auto-update.sh
-
-    # Add cron job (check every 6 hours)
-    local cron_entry="0 */6 * * * /opt/kinboard-auto-update.sh"
-
-    # Remove existing entry if present, then add new one
-    (crontab -l 2>/dev/null | grep -v "kinboard-auto-update.sh"; echo "$cron_entry") | crontab -
-
-    # Ensure cron is running
-    systemctl enable --now cron > /dev/null 2>&1 || service cron start > /dev/null 2>&1
-
-    log_success "Auto-update cron job configured (runs every 6 hours)"
-}
-
 # Cleanup
 cleanup() {
     log_info "Cleaning up..."
@@ -363,7 +308,6 @@ do_install() {
     build_frontend
     create_services
     start_services
-    setup_auto_update
     cleanup
 
     echo ""

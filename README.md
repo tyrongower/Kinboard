@@ -111,8 +111,74 @@ Production samples:
 ## Deployment
 
 An installer script for Debian/Ubuntu LXC is provided at `install/install.sh`.
-- It installs Node.js and .NET 9, builds backend and frontend, and creates systemd services.
-- Ensure `REPO_URL` and `BRANCH` in the script match your public repository location and default branch.
+
+### One-line install
+
+Run the following on a fresh Debian/Ubuntu container/VM (requires `sudo` privileges):
+
+```
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/tyrongower/Kinboard/main/install/install.sh)"
+```
+
+This will:
+- Install prerequisites (curl, git, cron, etc.), Node.js 22.x and .NET 9 SDK
+- Clone the repository and build the backend and frontend
+- Create and start `systemd` services for both apps
+- Prompt you for:
+  - Backend API port (default `5000`)
+  - Frontend port (default `3000`)
+  - API URL used by the frontend (auto-derived from IP + backend port if not provided)
+
+After installation completes, you should see the URLs to access the frontend and backend.
+
+### Update existing installation
+
+If you don’t already have the script locally, download it first:
+
+```
+curl -fsSL -o kinboard-install.sh https://raw.githubusercontent.com/tyrongower/Kinboard/main/install/install.sh
+chmod +x kinboard-install.sh
+```
+
+Then you can run updates using the supported flags:
+
+- Update if newer version is available:
+
+```
+sudo bash kinboard-install.sh --update
+```
+
+- Force rebuild even if already up to date:
+
+```
+sudo bash kinboard-install.sh --force-update
+```
+
+- Check if an update is available (exits 0 when an update exists, 1 otherwise):
+
+```
+sudo bash kinboard-install.sh --check
+```
+
+### Script options and behavior
+
+`install/install.sh` accepts the following options (see in-script help with `--help`):
+
+- No args (fresh install):
+  - Prompts for ports and API URL on first install
+  - Installs dependencies, builds both apps, creates and enables services
+  - Starts services and outputs access URLs
+- `--update`: Updates only when the remote `main` branch has a newer commit than the currently installed commit
+- `--force-update`: Rebuilds and restarts services regardless of commit status
+- `--check`: Prints whether an update is available and exits with a corresponding code
+- `--help`/`-h`: Shows usage information
+
+Other notes:
+- Default repo and branch are set in the script: `REPO_URL=https://github.com/tyrongower/Kinboard.git`, `BRANCH=main`
+- Install paths: app source at `/opt/kinboard`, published backend at `/opt/kinboard-backend`
+- Logs: update logs at `/var/log/kinboard-update.log`
+- Services: `kinboard-backend.service` (ASP.NET Core on chosen port) and `kinboard-frontend.service` (Next.js served via `npm start` on chosen port)
+- The frontend’s production `.env.production` will be created with `NEXT_PUBLIC_API_URL` on first install; subsequent updates preserve it
 
 ---
 

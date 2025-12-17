@@ -7,6 +7,7 @@ import JobsAdmin from '@/components/admin/JobsAdmin';
 import CalendarsAdmin from '@/components/admin/CalendarsAdmin';
 import SiteSettingsAdmin from '@/components/admin/SiteSettingsAdmin';
 import ShoppingAdmin from '@/components/admin/ShoppingAdmin';
+import Link from "next/link";
 
 const tabs = [
   { id: 'jobs', label: 'Jobs', icon: '✓' },
@@ -16,19 +17,19 @@ const tabs = [
   { id: 'settings', label: 'Settings', icon: '⚙️' },
 ] as const;
 
-type TabId = typeof tabs[number]['id'];
 
 function getTabIndex(slug?: string): number {
   const idx = tabs.findIndex(t => t.id === slug?.toLowerCase());
-  return idx >= 0 ? idx : 0; // default to 'jobs'
+  return idx >= 0 ? idx : 0;
 }
 
 export default function AdminTabbedPage() {
   const params = useParams<{ tab?: string }>();
   const router = useRouter();
 
-  const initialIndex = useMemo(() => getTabIndex(params?.tab), [params?.tab]);
-  const [currentTab, setCurrentTab] = useState<number>(initialIndex);
+  const currentTabIndex = useMemo(() => getTabIndex(params?.tab), [params?.tab]);
+  const currentTabId = tabs[currentTabIndex]?.id;
+
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const firstMenuFocusableRef = useRef<HTMLButtonElement | null>(null);
 
@@ -38,35 +39,23 @@ export default function AdminTabbedPage() {
     return flag === undefined || flag === '1' || flag?.toLowerCase() === 'true';
   }, []);
 
-  // Keep state in sync if the URL param changes (e.g., via back/forward)
-  useEffect(() => {
-    const idx = getTabIndex(params?.tab);
-    setCurrentTab(idx);
-  }, [params?.tab]);
-
-  // Close drawer on Escape, basic focus management
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setIsMenuOpen(false);
     };
     if (isMenuOpen) {
       document.addEventListener('keydown', onKey);
-      // send focus to first control after open
       setTimeout(() => firstMenuFocusableRef.current?.focus(), 0);
     }
     return () => document.removeEventListener('keydown', onKey);
   }, [isMenuOpen]);
 
   const handleTabChange = (index: number) => {
-    setCurrentTab(index);
     router.replace(`/admin/${tabs[index].id}`);
   };
 
-  const currentTabId = tabs[currentTab]?.id;
-
   return (
     <div className="min-h-screen flex flex-col w-full overflow-x-hidden" style={{ background: 'var(--color-bg)' }}>
-      {/* Desktop Header (≥1450px) */}
       <header
         className="hidden min-[1450px]:flex flex-wrap items-center gap-3 sm:gap-4 px-4 sm:px-6 py-3 sm:py-4 border-b justify-between"
         style={{
@@ -74,8 +63,7 @@ export default function AdminTabbedPage() {
           borderColor: 'var(--color-divider)'
         }}
       >
-        {/* Brand */}
-        <div className="flex items-center gap-3 mr-0 sm:mr-4 flex-shrink-0">
+        <div className="flex items-center gap-3 mr-0 sm:mr-4 shrink-0">
           <div
             className="w-10 h-10 rounded-xl flex items-center justify-center text-xl font-bold"
             style={{ background: 'var(--color-primary-muted)', color: 'var(--color-primary)' }}
@@ -92,14 +80,13 @@ export default function AdminTabbedPage() {
           </div>
         </div>
 
-        {/* Tab Navigation */}
-        <nav className="tab-list flex-1 max-w-full sm:max-w-xl min-w-0 order-last sm:order-none mt-2 sm:mt-0">
+        <nav className="tab-list flex-1 max-w-full sm:max-w-xl min-w-0 order-last sm:order-0 mt-2 sm:mt-0">
           {tabs.map((tab, index) => (
             <button
               key={tab.id}
               onClick={() => handleTabChange(index)}
               className={`tab flex-1 flex items-center justify-center gap-2 ${
-                currentTab === index ? 'tab-active' : ''
+                currentTabIndex === index ? 'tab-active' : ''
               }`}
             >
               <span className="text-lg">{tab.icon}</span>
@@ -108,23 +95,20 @@ export default function AdminTabbedPage() {
           ))}
         </nav>
 
-        {/* Back to Kiosk link */}
-        <a
+        <Link
           href="/kiosk/jobs"
-          className="btn btn-secondary text-sm flex-shrink-0"
+          className="btn btn-secondary text-sm shrink-0"
           style={{ minHeight: 'var(--touch-target)' }}
         >
           ← Back to Kiosk
-        </a>
+        </Link>
       </header>
 
-      {/* Compact Header (<1450px) */}
       <header
         className="flex min-[1450px]:hidden items-center justify-between gap-3 px-4 py-3 border-b"
         style={{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-divider)' }}
       >
-        {/* Brand */}
-        <div className="flex items-center gap-3 flex-shrink-0">
+        <div className="flex items-center gap-3 shrink-0">
           <div
             className="w-10 h-10 rounded-xl flex items-center justify-center text-xl font-bold"
             style={{ background: 'var(--color-primary-muted)', color: 'var(--color-primary)' }}
@@ -134,16 +118,14 @@ export default function AdminTabbedPage() {
           <span className="hidden sm:block font-semibold" style={{ color: 'var(--color-text)' }}>Kinboard</span>
         </div>
 
-        {/* Center: Current tab title */}
         <div className="flex-1 min-w-0 text-center">
           <div className="flex items-center justify-center gap-2 truncate">
             <span className="text-base font-medium truncate" style={{ color: 'var(--color-text)' }}>
-              {tabs[currentTab]?.label}
+              {tabs[currentTabIndex]?.label}
             </span>
           </div>
         </div>
 
-        {/* Right: Menu button */}
         <button
           className="rounded-lg"
           style={{ width: 'var(--touch-target-lg)', height: 'var(--touch-target-lg)' }}
@@ -158,7 +140,6 @@ export default function AdminTabbedPage() {
         </button>
       </header>
 
-      {/* Drawer / Sheet for small screens */}
       {isMenuOpen && (
         <div
           className="fixed inset-0 z-50 flex flex-col"
@@ -166,12 +147,10 @@ export default function AdminTabbedPage() {
           aria-modal="true"
           aria-label="Admin menu"
         >
-          {/* Backdrop */}
           <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.6)' }} onClick={() => setIsMenuOpen(false)} />
 
-          {/* Panel */}
           <div
-            className="relative ml-auto mr-auto w-full max-w-[800px] rounded-b-2xl border shadow-lg animate-slide-up"
+            className="relative ml-auto mr-auto w-full max-w-200 rounded-b-2xl border shadow-lg animate-slide-up"
             style={{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-divider)' }}
           >
             <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'var(--color-divider)' }}>
@@ -190,14 +169,13 @@ export default function AdminTabbedPage() {
             </div>
 
             <div className="p-4 flex flex-col gap-4">
-              {/* Tabs */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {tabs.map((tab, index) => (
                   <button
                     key={tab.id}
                     ref={index === 0 ? firstMenuFocusableRef : undefined}
                     onClick={() => { handleTabChange(index); setIsMenuOpen(false); }}
-                    className={`tab ${currentTab === index ? 'tab-active' : ''} w-full flex items-center justify-center gap-2`}
+                    className={`tab ${currentTabIndex === index ? 'tab-active' : ''} w-full flex items-center justify-center gap-2`}
                     style={{ minHeight: 'var(--touch-target-lg)' }}
                   >
                     <span className="text-lg">{tab.icon}</span>
@@ -206,18 +184,16 @@ export default function AdminTabbedPage() {
                 ))}
               </div>
 
-              {/* Actions */}
               <div className="flex items-center justify-center gap-2">
-                <a
+                <Link
                   href="/kiosk/jobs"
                   className="btn btn-secondary"
                   style={{ minWidth: '200px', minHeight: 'var(--touch-target-lg)' }}
                 >
                   ← Back to Kiosk
-                </a>
+                </Link>
               </div>
 
-              {/* Close */}
               <div className="flex justify-center pt-2">
                 <button
                   className="btn-secondary"
@@ -232,7 +208,6 @@ export default function AdminTabbedPage() {
         </div>
       )}
 
-      {/* Main Content */}
       <main className="flex-1 overflow-auto p-4 sm:p-6">
         <div className="max-w-5xl mx-auto">
           {!adminEnabled ? (

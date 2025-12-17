@@ -35,15 +35,12 @@ public class WeatherController : ControllerBase
             if (string.IsNullOrEmpty(apiKey))
             {
                 _logger.LogWarning("Weather API key is not configured");
-                // No API key configured -> return clear error, no mock data
                 return Problem(
                     detail: "Weather API key is not configured.",
                     statusCode: StatusCodes.Status503ServiceUnavailable,
                     title: "Weather Unavailable");
             }
 
-            // WeatherAPI.com forecast (docs: https://www.weatherapi.com/docs/)
-            // Request up to 6 days (today + next 5). Free tiers may return fewer; we'll handle gracefully.
             var url = $"https://api.weatherapi.com/v1/forecast.json?key={apiKey}&q={Uri.EscapeDataString(location)}&days=5&aqi=no&alerts=no";
             _logger.LogDebug("Calling weather API for location: {Location}", location);
             var response = await _httpClient.GetAsync(url);
@@ -53,14 +50,12 @@ public class WeatherController : ControllerBase
                 var errorMessage = $"Failed to fetch weather data: {response.StatusCode}";
                 var content = await response.Content.ReadAsStringAsync();
                 _logger.LogError("Weather API error: {StatusCode}, Response: {Content}", response.StatusCode, content);
-                // Surface an error status to the client, no mock data
                 return StatusCode(StatusCodes.Status502BadGateway, new { error = errorMessage });
             }
 
             var json = await response.Content.ReadAsStringAsync();
             var weatherData = JsonSerializer.Deserialize<JsonElement>(json);
 
-            // Map WeatherAPI fields
             var current = weatherData.GetProperty("current");
             var forecastDays = weatherData.GetProperty("forecast").GetProperty("forecastday");
 
@@ -85,9 +80,8 @@ public class WeatherController : ControllerBase
                 };
             }
 
-            var iconPath = NormalizeIconUrl(condition.GetProperty("icon").GetString()); // may start with //
+            var iconPath = NormalizeIconUrl(condition.GetProperty("icon").GetString());
 
-            // Build Forecast list including today, limit to 3 total days (today + next 2)
             var daysArray = new List<ForecastItem>();
             var totalDays = forecastDays.GetArrayLength();
             for (int i = 0; i < Math.Min(totalDays, 3); i++)
@@ -150,7 +144,6 @@ public class WeatherController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unexpected error while fetching weather data");
-            // Unexpected server error -> return 500 with message, no mock data
             return StatusCode(StatusCodes.Status500InternalServerError, new { error = "Unexpected error while fetching weather data.", details = ex.Message });
         }
     }

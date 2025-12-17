@@ -7,18 +7,16 @@ import JobsTab from '@/components/kiosk/JobsTab';
 import ShoppingTab from '@/components/kiosk/ShoppingTab';
 import WeatherWidget from '@/components/kiosk/WeatherWidget';
 
-// Tab configuration
 const tabs = [
   { id: 'calendar', label: 'Calendar', icon: '📅' },
   { id: 'jobs', label: 'Jobs', icon: '✓' },
   { id: 'shopping', label: 'Shopping', icon: '🛒' },
 ] as const;
 
-type TabId = typeof tabs[number]['id'];
 
 function getTabIndex(slug?: string): number {
   const idx = tabs.findIndex(t => t.id === slug?.toLowerCase());
-  return idx >= 0 ? idx : 1; // default to 'jobs'
+  return idx >= 0 ? idx : 1;
 }
 
 export default function KioskPage() {
@@ -31,26 +29,22 @@ export default function KioskPage() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const firstMenuFocusableRef = useRef<HTMLButtonElement | null>(null);
 
-  // Sync tab with URL
   useEffect(() => {
     setCurrentTab(getTabIndex(params?.tab));
   }, [params?.tab]);
 
-  // Initialize date on client only (avoid hydration mismatch)
   useEffect(() => {
     if (!selectedDate) {
       setSelectedDate(new Date());
     }
   }, [selectedDate]);
 
-  // Close drawer on Escape, basic focus management
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setIsMenuOpen(false);
     };
     if (isMenuOpen) {
       document.addEventListener('keydown', onKey);
-      // send focus to first control after open
       setTimeout(() => firstMenuFocusableRef.current?.focus(), 0);
     }
     return () => document.removeEventListener('keydown', onKey);
@@ -91,7 +85,6 @@ export default function KioskPage() {
 
   return (
     <div className="min-h-screen flex flex-col w-full overflow-x-hidden" style={{ background: 'var(--color-bg)' }}>
-      {/* Desktop Header (≥1450px) */}
       <header
         className="hidden min-[1450px]:flex flex-wrap items-center gap-3 sm:gap-4 px-4 sm:px-6 py-3 sm:py-4 border-b justify-between"
         style={{
@@ -99,8 +92,7 @@ export default function KioskPage() {
           borderColor: 'var(--color-divider)'
         }}
       >
-        {/* Brand */}
-        <div className="flex items-center gap-3 mr-0 sm:mr-4 flex-shrink-0">
+        <div className="flex items-center gap-3 mr-0 sm:mr-4 shrink-0">
           <div
             className="w-10 h-10 rounded-xl flex items-center justify-center text-xl font-bold">
             <img src="/favicon.svg" alt="Logo"/>
@@ -115,8 +107,7 @@ export default function KioskPage() {
           </div>
         </div>
 
-        {/* Tab Navigation */}
-        <nav className="tab-list flex-1 max-w-full sm:max-w-md min-w-0 order-last sm:order-none mt-2 sm:mt-0">
+        <nav className="tab-list flex-1 max-w-full sm:max-w-md min-w-0 order-last sm:order-0 mt-2 sm:mt-0">
           {tabs.map((tab, index) => (
             <button
               key={tab.id}
@@ -131,9 +122,8 @@ export default function KioskPage() {
           ))}
         </nav>
 
-        {/* Date Navigation */}
         <div
-          className="flex items-center gap-1 px-2 py-1 rounded-xl flex-shrink-0"
+          className="flex items-center gap-1 px-2 py-1 rounded-xl shrink-0"
           style={{ background: 'var(--color-surface)' }}
         >
           <button
@@ -145,7 +135,7 @@ export default function KioskPage() {
             ‹
           </button>
           <span
-            className="min-w-[140px] text-center font-medium px-2"
+            className="min-w-35 text-center font-medium px-2"
             style={{ color: 'var(--color-text)' }}
             suppressHydrationWarning
           >
@@ -161,19 +151,16 @@ export default function KioskPage() {
           </button>
         </div>
 
-        {/* Weather Widget */}
-        <div className="hidden md:block flex-shrink-0">
+        <div className="hidden md:block shrink-0">
           <WeatherWidget />
         </div>
       </header>
 
-      {/* Compact Header (<1450px) */}
       <header
         className="flex min-[1450px]:hidden items-center justify-between gap-3 px-4 py-3 border-b"
         style={{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-divider)' }}
       >
-        {/* Brand */}
-        <div className="flex items-center gap-3 flex-shrink-0">
+        <div className="flex items-center gap-3 shrink-0">
           <div
             className="w-10 h-10 rounded-xl flex items-center justify-center text-xl font-bold"
             style={{ background: 'var(--color-primary-muted)', color: 'var(--color-primary)' }}
@@ -183,7 +170,6 @@ export default function KioskPage() {
           <span className="hidden sm:block font-semibold" style={{ color: 'var(--color-text)' }}>Kinboard</span>
         </div>
 
-        {/* Center: Tab title + date */}
         <div className="flex-1 min-w-0 text-center">
           <div className="flex items-center justify-center gap-2 truncate">
             <span className="text-base font-medium truncate" style={{ color: 'var(--color-text)' }}>
@@ -195,7 +181,6 @@ export default function KioskPage() {
           </div>
         </div>
 
-        {/* Right: Menu button */}
         <button
           className="rounded-lg"
           style={{ width: 'var(--touch-target-lg)', height: 'var(--touch-target-lg)' }}
@@ -210,7 +195,6 @@ export default function KioskPage() {
         </button>
       </header>
 
-      {/* Drawer / Sheet for small screens */}
       {isMenuOpen && (
         <div
           className="fixed inset-0 z-50 flex flex-col"
@@ -218,12 +202,10 @@ export default function KioskPage() {
           aria-modal="true"
           aria-label="Kiosk menu"
         >
-          {/* Backdrop */}
           <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.6)' }} onClick={() => setIsMenuOpen(false)} />
 
-          {/* Panel */}
           <div
-            className="relative ml-auto mr-auto w-full max-w-[800px] rounded-b-2xl border shadow-lg animate-slide-up"
+            className="relative ml-auto mr-auto w-full max-w-200 rounded-b-2xl border shadow-lg animate-slide-up"
             style={{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-divider)' }}
           >
             <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'var(--color-divider)' }}>
@@ -242,7 +224,6 @@ export default function KioskPage() {
             </div>
 
             <div className="p-4 flex flex-col gap-4">
-              {/* Tabs */}
               <div className="grid grid-cols-3 gap-2">
                 {tabs.map((tab, index) => (
                   <button
@@ -258,7 +239,6 @@ export default function KioskPage() {
                 ))}
               </div>
 
-              {/* Date controls */}
               <div className="flex items-center justify-center gap-2">
                 <button
                   onClick={() => { handlePreviousDay(); }}
@@ -285,12 +265,10 @@ export default function KioskPage() {
                 </button>
               </div>
 
-              {/* Weather */}
               <div className="mt-2">
                 <WeatherWidget />
               </div>
 
-              {/* Close */}
               <div className="flex justify-center pt-2">
                 <button
                   className="btn-secondary"

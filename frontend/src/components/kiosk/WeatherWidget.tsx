@@ -11,7 +11,6 @@ interface ForecastItem {
   totalPrecipMm: number;
   chanceOfRainPercent: number;
   conditionIconUrl: string;
-  // Extra details for full report
   conditionText?: string;
   maxWindKph?: number;
   avgHumidity?: number;

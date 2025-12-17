@@ -1,0 +1,14 @@
+services:
+  kinboard:
+    build: .
+    ports:
+      - "6565:6565"
+    volumes:
+      - kinboard-data:/app/data
+    environment:
+      - BACKEND_PORT=5000
+      - Cors__AllowedOrigins__0=http://localhost:6565
+    restart: unless-stopped
+
+volumes:
+  kinboard-data:

@@ -8,6 +8,7 @@ import CalendarsAdmin from '@/components/admin/CalendarsAdmin';
 import SiteSettingsAdmin from '@/components/admin/SiteSettingsAdmin';
 import ShoppingAdmin from '@/components/admin/ShoppingAdmin';
 import KioskTokensAdmin from '@/components/admin/KioskTokensAdmin';
+import PerformanceAdmin from '@/components/admin/PerformanceAdmin';
 import Link from "next/link";
 
 const tabs = [
@@ -16,6 +17,7 @@ const tabs = [
   { id: 'kiosk', label: 'Kiosk Tokens', icon: '🔑' },
   { id: 'calendars', label: 'Calendars', icon: '📅' },
   { id: 'shopping', label: 'Shopping', icon: '🛒' },
+  { id: 'performance', label: 'Performance', icon: '📊' },
   { id: 'settings', label: 'Settings', icon: '⚙️' },
 ] as const;
 
@@ -229,6 +231,9 @@ export default function AdminTabbedPage() {
               </div>
               <div className={currentTabId === 'shopping' ? '' : 'hidden'}>
                 <ShoppingAdmin />
+              </div>
+              <div className={currentTabId === 'performance' ? '' : 'hidden'}>
+                <PerformanceAdmin />
               </div>
               <div className={currentTabId === 'settings' ? '' : 'hidden'}>
                 <SiteSettingsAdmin />

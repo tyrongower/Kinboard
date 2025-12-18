@@ -60,10 +60,15 @@ public class UsersController : ControllerBase
             _logger.LogInformation("Retrieved {Count} users", users.Count);
             return users;
         }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database error retrieving users");
+            return StatusCode(500, new { message = "Database error occurred" });
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error retrieving users");
-            throw;
+            _logger.LogError(ex, "Unexpected error retrieving users");
+            return StatusCode(500, new { message = "An unexpected error occurred" });
         }
     }
 
@@ -77,14 +82,19 @@ public class UsersController : ControllerBase
             if (user == null)
             {
                 _logger.LogWarning("User ID {Id} not found", id);
-                return NotFound();
+                return NotFound(new { message = "User not found" });
             }
             return user;
         }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database error retrieving user ID: {Id}", id);
+            return StatusCode(500, new { message = "Database error occurred" });
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error retrieving user ID: {Id}", id);
-            throw;
+            _logger.LogError(ex, "Unexpected error retrieving user ID: {Id}", id);
+            return StatusCode(500, new { message = "An unexpected error occurred" });
         }
     }
 
@@ -103,7 +113,13 @@ public class UsersController : ControllerBase
     {
         try
         {
-            _logger.LogInformation("Creating user: {DisplayName}", request.DisplayName);
+            _logger.LogDebug("Creating user: {DisplayName}", request.DisplayName);
+
+            if (string.IsNullOrWhiteSpace(request.DisplayName))
+            {
+                _logger.LogWarning("Create user called with empty display name");
+                return BadRequest(new { message = "Display name is required" });
+            }
 
             // Basic normalization: ensure color starts with '#'
             var colorHex = request.ColorHex;
@@ -118,6 +134,7 @@ public class UsersController : ControllerBase
             {
                 if (request.Password.Length < 8)
                 {
+                    _logger.LogWarning("Password too short for user creation: {DisplayName}", request.DisplayName);
                     return BadRequest(new { message = "Password must be at least 8 characters long" });
                 }
                 passwordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
@@ -140,10 +157,15 @@ public class UsersController : ControllerBase
             user.PasswordHash = null;
             return CreatedAtAction(nameof(GetUser), new { id = user.Id }, user);
         }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database error creating user: {DisplayName}", request.DisplayName);
+            return StatusCode(500, new { message = "Database error occurred" });
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error creating user: {DisplayName}", request.DisplayName);
-            throw;
+            _logger.LogError(ex, "Unexpected error creating user: {DisplayName}", request.DisplayName);
+            return StatusCode(500, new { message = "An unexpected error occurred" });
         }
     }
 
@@ -162,12 +184,13 @@ public class UsersController : ControllerBase
     {
         try
         {
-            _logger.LogInformation("Updating user ID: {Id}", id);
+            _logger.LogDebug("Updating user ID: {Id}", id);
 
             var user = await _context.Users.FindAsync(id);
             if (user == null)
             {
-                return NotFound();
+                _logger.LogWarning("User ID {Id} not found for update", id);
+                return NotFound(new { message = "User not found" });
             }
 
             // Basic normalization: ensure color starts with '#'
@@ -188,6 +211,7 @@ public class UsersController : ControllerBase
             {
                 if (request.Password.Length < 8)
                 {
+                    _logger.LogWarning("Password too short for user ID: {Id}", id);
                     return BadRequest(new { message = "Password must be at least 8 characters long" });
                 }
                 user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
@@ -200,13 +224,12 @@ public class UsersController : ControllerBase
         catch (DbUpdateException ex)
         {
             _logger.LogError(ex, "Database error updating user ID: {Id}", id);
-            // Database update error
-            return Problem(ex.Message);
+            return StatusCode(500, new { message = "Database error occurred" });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error updating user ID: {Id}", id);
-            throw;
+            _logger.LogError(ex, "Unexpected error updating user ID: {Id}", id);
+            return StatusCode(500, new { message = "An unexpected error occurred" });
         }
     }
 
@@ -218,16 +241,34 @@ public class UsersController : ControllerBase
     public async Task<IActionResult> UpdateOrder([FromBody] int[] orderedIds)
     {
         if (orderedIds == null || orderedIds.Length == 0)
-            return BadRequest("No user ids provided");
-
-        var users = await _context.Users.Where(u => orderedIds.Contains(u.Id)).ToListAsync();
-        var indexById = orderedIds.Select((id, idx) => (id, idx)).ToDictionary(x => x.id, x => x.idx);
-        foreach (var u in users)
         {
-            u.DisplayOrder = indexById.TryGetValue(u.Id, out var idx) ? idx : u.DisplayOrder;
+            _logger.LogWarning("Update user order called with no IDs");
+            return BadRequest(new { message = "No user IDs provided" });
         }
-        await _context.SaveChangesAsync();
-        return NoContent();
+
+        try
+        {
+            _logger.LogDebug("Updating user order for {Count} users", orderedIds.Length);
+            var users = await _context.Users.Where(u => orderedIds.Contains(u.Id)).ToListAsync();
+            var indexById = orderedIds.Select((id, idx) => (id, idx)).ToDictionary(x => x.id, x => x.idx);
+            foreach (var u in users)
+            {
+                u.DisplayOrder = indexById.TryGetValue(u.Id, out var idx) ? idx : u.DisplayOrder;
+            }
+            await _context.SaveChangesAsync();
+            _logger.LogInformation("User order updated successfully");
+            return NoContent();
+        }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database error updating user order");
+            return StatusCode(500, new { message = "Database error occurred" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error updating user order");
+            return StatusCode(500, new { message = "An unexpected error occurred" });
+        }
     }
 
     /// <summary>
@@ -240,11 +281,23 @@ public class UsersController : ControllerBase
     {
         try
         {
-            _logger.LogInformation("Uploading avatar for user ID: {Id}", id);
+            _logger.LogDebug("Uploading avatar for user ID: {Id}", id);
             var user = await _context.Users.FindAsync(id);
-            if (user == null) return NotFound();
-            if (file == null || file.Length == 0) return BadRequest("No file uploaded");
-            if (file.Length > MaxAvatarBytes) return BadRequest($"Max file size is {MaxAvatarBytes / (1024 * 1024)} MB");
+            if (user == null)
+            {
+                _logger.LogWarning("User ID {Id} not found for avatar upload", id);
+                return NotFound(new { message = "User not found" });
+            }
+            if (file == null || file.Length == 0)
+            {
+                _logger.LogWarning("No file provided for user ID: {Id}", id);
+                return BadRequest(new { message = "No file uploaded" });
+            }
+            if (file.Length > MaxAvatarBytes)
+            {
+                _logger.LogWarning("File too large for user ID: {Id}, size: {Size} bytes", id, file.Length);
+                return BadRequest(new { message = $"Max file size is {MaxAvatarBytes / (1024 * 1024)} MB" });
+            }
 
         await using var inStream = file.OpenReadStream();
         Image image;
@@ -252,15 +305,17 @@ public class UsersController : ControllerBase
         {
             image = await Image.LoadAsync(inStream);
         }
-        catch
+        catch (Exception ex)
         {
-            return BadRequest("Invalid image file");
+            _logger.LogWarning(ex, "Invalid image file for user ID: {Id}", id);
+            return BadRequest(new { message = "Invalid image file" });
         }
 
         if (image.Width < MinDimension || image.Height < MinDimension || image.Width > MaxDimension || image.Height > MaxDimension)
         {
             image.Dispose();
-            return BadRequest($"Image dimensions out of range ({MinDimension}-{MaxDimension}px)");
+            _logger.LogWarning("Image dimensions out of range for user ID: {Id}, dimensions: {Width}x{Height}", id, image.Width, image.Height);
+            return BadRequest(new { message = $"Image dimensions out of range ({MinDimension}-{MaxDimension}px)" });
         }
 
         // Center-crop to square then resize
@@ -284,10 +339,15 @@ public class UsersController : ControllerBase
         _logger.LogInformation("Avatar uploaded successfully for user ID: {Id}", id);
         return Ok(new { avatarUrl = cacheBusted });
         }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database error uploading avatar for user ID: {Id}", id);
+            return StatusCode(500, new { message = "Database error occurred" });
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error uploading avatar for user ID: {Id}", id);
-            throw;
+            _logger.LogError(ex, "Unexpected error uploading avatar for user ID: {Id}", id);
+            return StatusCode(500, new { message = "An unexpected error occurred" });
         }
     }
 
@@ -300,70 +360,127 @@ public class UsersController : ControllerBase
     [Authorize(Roles = "admin")] // Admin only
     public async Task<IActionResult> FetchAvatar(int id, [FromBody] FetchAvatarRequest body, [FromServices] IHttpClientFactory httpFactory)
     {
-        var user = await _context.Users.FindAsync(id);
-        if (user == null) return NotFound();
-        if (string.IsNullOrWhiteSpace(body?.Url)) return BadRequest("Missing url");
-
-        if (!Uri.TryCreate(body.Url, UriKind.Absolute, out var uri)) return BadRequest("Invalid url");
-        if (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps) return BadRequest("Only http/https URLs are allowed");
-
-        // Basic SSRF protections: block private/reserved IPs
         try
         {
-            var host = uri.DnsSafeHost;
-            var addresses = await Dns.GetHostAddressesAsync(host);
-            foreach (var addr in addresses)
+            _logger.LogDebug("Fetching avatar from URL for user ID: {Id}", id);
+            var user = await _context.Users.FindAsync(id);
+            if (user == null)
             {
-                if (addr.AddressFamily == AddressFamily.InterNetwork || addr.AddressFamily == AddressFamily.InterNetworkV6)
+                _logger.LogWarning("User ID {Id} not found for avatar fetch", id);
+                return NotFound(new { message = "User not found" });
+            }
+            if (string.IsNullOrWhiteSpace(body?.Url))
+            {
+                _logger.LogWarning("Missing URL for avatar fetch for user ID: {Id}", id);
+                return BadRequest(new { message = "Missing URL" });
+            }
+
+            if (!Uri.TryCreate(body.Url, UriKind.Absolute, out var uri))
+            {
+                _logger.LogWarning("Invalid URL for avatar fetch for user ID: {Id}, URL: {Url}", id, body.Url);
+                return BadRequest(new { message = "Invalid URL" });
+            }
+            if (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)
+            {
+                _logger.LogWarning("Non-HTTP URL scheme for user ID: {Id}, URL: {Url}", id, body.Url);
+                return BadRequest(new { message = "Only http/https URLs are allowed" });
+            }
+
+            // Basic SSRF protections: block private/reserved IPs
+            try
+            {
+                var host = uri.DnsSafeHost;
+                var addresses = await Dns.GetHostAddressesAsync(host);
+                foreach (var addr in addresses)
                 {
-                    if (IsPrivateIp(addr)) return BadRequest("Target not allowed");
+                    if (addr.AddressFamily == AddressFamily.InterNetwork || addr.AddressFamily == AddressFamily.InterNetworkV6)
+                    {
+                        if (IsPrivateIp(addr))
+                        {
+                            _logger.LogWarning("Attempted to fetch avatar from private IP for user ID: {Id}, host: {Host}", id, host);
+                            return BadRequest(new { message = "Target not allowed" });
+                        }
+                    }
                 }
             }
-        }
-        catch { return BadRequest("Could not resolve host"); }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not resolve host for user ID: {Id}, URL: {Url}", id, body.Url);
+                return BadRequest(new { message = "Could not resolve host" });
+            }
 
-        var client = httpFactory.CreateClient();
-        client.Timeout = TimeSpan.FromSeconds(10);
-        using var req = new HttpRequestMessage(HttpMethod.Get, uri);
-        using var resp = await client.SendAsync(req, HttpCompletionOption.ResponseHeadersRead);
-        if (!resp.IsSuccessStatusCode) return BadRequest("Failed to download image");
-        if (resp.Content.Headers.ContentLength is long len && len > MaxAvatarBytes)
-            return BadRequest("File too large");
-        var contentType = resp.Content.Headers.ContentType?.MediaType ?? "";
-        if (!contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
-            return BadRequest("URL is not an image");
+            var client = httpFactory.CreateClient();
+            client.Timeout = TimeSpan.FromSeconds(10);
+            using var req = new HttpRequestMessage(HttpMethod.Get, uri);
+            using var resp = await client.SendAsync(req, HttpCompletionOption.ResponseHeadersRead);
+            if (!resp.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("Failed to download image for user ID: {Id}, status: {Status}", id, resp.StatusCode);
+                return BadRequest(new { message = "Failed to download image" });
+            }
+            if (resp.Content.Headers.ContentLength is long len && len > MaxAvatarBytes)
+            {
+                _logger.LogWarning("Remote image too large for user ID: {Id}, size: {Size} bytes", id, len);
+                return BadRequest(new { message = "File too large" });
+            }
+            var contentType = resp.Content.Headers.ContentType?.MediaType ?? "";
+            if (!contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogWarning("URL is not an image for user ID: {Id}, content-type: {ContentType}", id, contentType);
+                return BadRequest(new { message = "URL is not an image" });
+            }
 
-        await using var networkStream = await resp.Content.ReadAsStreamAsync();
-        using var limited = new LimitedReadStream(networkStream, MaxAvatarBytes + 1);
+            await using var networkStream = await resp.Content.ReadAsStreamAsync();
+            using var limited = new LimitedReadStream(networkStream, MaxAvatarBytes + 1);
 
-        Image image;
-        try { image = await Image.LoadAsync(limited); }
-        catch { return BadRequest("Invalid image data"); }
+            Image image;
+            try
+            {
+                image = await Image.LoadAsync(limited);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Invalid image data from URL for user ID: {Id}", id);
+                return BadRequest(new { message = "Invalid image data" });
+            }
 
-        if (image.Width < MinDimension || image.Height < MinDimension || image.Width > MaxDimension || image.Height > MaxDimension)
-        {
+            if (image.Width < MinDimension || image.Height < MinDimension || image.Width > MaxDimension || image.Height > MaxDimension)
+            {
+                image.Dispose();
+                _logger.LogWarning("Remote image dimensions out of range for user ID: {Id}, dimensions: {Width}x{Height}", id, image.Width, image.Height);
+                return BadRequest(new { message = $"Image dimensions out of range ({MinDimension}-{MaxDimension}px)" });
+            }
+
+            int side = Math.Min(image.Width, image.Height);
+            var rect = new Rectangle((image.Width - side) / 2, (image.Height - side) / 2, side, side);
+            image.Mutate(x => x.Crop(rect).Resize(OutputSize, OutputSize));
+
+            var avatarsRoot = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "avatars");
+            Directory.CreateDirectory(avatarsRoot);
+            var fileName = $"user_{id}.webp";
+            var fullPath = Path.Combine(avatarsRoot, fileName);
+            await using (var outStream = System.IO.File.Create(fullPath))
+            {
+                await image.SaveAsWebpAsync(outStream, WebpEncoder);
+            }
             image.Dispose();
-            return BadRequest($"Image dimensions out of range ({MinDimension}-{MaxDimension}px)");
+
+            user.AvatarUrl = $"/avatars/{fileName}";
+            await _context.SaveChangesAsync();
+            var cacheBusted = user.AvatarUrl + $"?v={DateTimeOffset.UtcNow.ToUnixTimeSeconds()}";
+            _logger.LogInformation("Avatar fetched from URL successfully for user ID: {Id}", id);
+            return Ok(new { avatarUrl = cacheBusted });
         }
-
-        int side = Math.Min(image.Width, image.Height);
-        var rect = new Rectangle((image.Width - side) / 2, (image.Height - side) / 2, side, side);
-        image.Mutate(x => x.Crop(rect).Resize(OutputSize, OutputSize));
-
-        var avatarsRoot = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "avatars");
-        Directory.CreateDirectory(avatarsRoot);
-        var fileName = $"user_{id}.webp";
-        var fullPath = Path.Combine(avatarsRoot, fileName);
-        await using (var outStream = System.IO.File.Create(fullPath))
+        catch (DbUpdateException ex)
         {
-            await image.SaveAsWebpAsync(outStream, WebpEncoder);
+            _logger.LogError(ex, "Database error fetching avatar for user ID: {Id}", id);
+            return StatusCode(500, new { message = "Database error occurred" });
         }
-        image.Dispose();
-
-        user.AvatarUrl = $"/avatars/{fileName}";
-        await _context.SaveChangesAsync();
-        var cacheBusted = user.AvatarUrl + $"?v={DateTimeOffset.UtcNow.ToUnixTimeSeconds()}";
-        return Ok(new { avatarUrl = cacheBusted });
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error fetching avatar for user ID: {Id}", id);
+            return StatusCode(500, new { message = "An unexpected error occurred" });
+        }
     }
 
     private static bool IsPrivateIp(IPAddress ip)
@@ -421,24 +538,47 @@ public class UsersController : ControllerBase
     [Authorize(Roles = "admin")] // Admin only
     public async Task<IActionResult> DeleteAvatar(int id)
     {
-        var user = await _context.Users.FindAsync(id);
-        if (user == null) return NotFound();
-
-        // Delete avatar file
         try
         {
-            if (!string.IsNullOrWhiteSpace(user.AvatarUrl))
+            _logger.LogDebug("Deleting avatar for user ID: {Id}", id);
+            var user = await _context.Users.FindAsync(id);
+            if (user == null)
             {
-                var path = user.AvatarUrl.Split('?')[0].Replace('/', Path.DirectorySeparatorChar);
-                var full = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", path.TrimStart(Path.DirectorySeparatorChar));
-                if (System.IO.File.Exists(full)) System.IO.File.Delete(full);
+                _logger.LogWarning("User ID {Id} not found for avatar deletion", id);
+                return NotFound(new { message = "User not found" });
             }
-        }
-        catch { /* ignore file delete errors */ }
 
-        user.AvatarUrl = null;
-        await _context.SaveChangesAsync();
-        return NoContent();
+            // Delete avatar file
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(user.AvatarUrl))
+                {
+                    var path = user.AvatarUrl.Split('?')[0].Replace('/', Path.DirectorySeparatorChar);
+                    var full = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", path.TrimStart(Path.DirectorySeparatorChar));
+                    if (System.IO.File.Exists(full)) System.IO.File.Delete(full);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error deleting avatar file for user ID: {Id}", id);
+                /* ignore file delete errors */
+            }
+
+            user.AvatarUrl = null;
+            await _context.SaveChangesAsync();
+            _logger.LogInformation("Avatar deleted for user ID: {Id}", id);
+            return NoContent();
+        }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database error deleting avatar for user ID: {Id}", id);
+            return StatusCode(500, new { message = "Database error occurred" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error deleting avatar for user ID: {Id}", id);
+            return StatusCode(500, new { message = "An unexpected error occurred" });
+        }
     }
 
     /// <summary>
@@ -448,35 +588,77 @@ public class UsersController : ControllerBase
     [Authorize] // Both admin and kiosk can access
     public async Task<IActionResult> ToggleHideCompleted(int id)
     {
-        var user = await _context.Users.FindAsync(id);
-        if (user == null) return NotFound();
+        try
+        {
+            _logger.LogDebug("Toggling hide completed for user ID: {Id}", id);
+            var user = await _context.Users.FindAsync(id);
+            if (user == null)
+            {
+                _logger.LogWarning("User ID {Id} not found for toggle", id);
+                return NotFound(new { message = "User not found" });
+            }
 
-        user.HideCompletedInKiosk = !user.HideCompletedInKiosk;
-        await _context.SaveChangesAsync();
+            user.HideCompletedInKiosk = !user.HideCompletedInKiosk;
+            await _context.SaveChangesAsync();
+            _logger.LogInformation("Hide completed toggled to {Value} for user ID: {Id}", user.HideCompletedInKiosk, id);
 
-        return Ok(new { hideCompletedInKiosk = user.HideCompletedInKiosk });
+            return Ok(new { hideCompletedInKiosk = user.HideCompletedInKiosk });
+        }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database error toggling hide completed for user ID: {Id}", id);
+            return StatusCode(500, new { message = "Database error occurred" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error toggling hide completed for user ID: {Id}", id);
+            return StatusCode(500, new { message = "An unexpected error occurred" });
+        }
     }
 
     [HttpDelete("{id}")]
     [Authorize(Roles = "admin")] // Admin only
     public async Task<IActionResult> DeleteUser(int id)
     {
-        var user = await _context.Users.FindAsync(id);
-        if (user == null) return NotFound();
-        // Try delete avatar file
         try
         {
-            if (!string.IsNullOrWhiteSpace(user.AvatarUrl))
+            _logger.LogDebug("Deleting user ID: {Id}", id);
+            var user = await _context.Users.FindAsync(id);
+            if (user == null)
             {
-                var path = user.AvatarUrl.Split('?')[0].Replace('/', Path.DirectorySeparatorChar);
-                var full = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", path.TrimStart(Path.DirectorySeparatorChar));
-                if (System.IO.File.Exists(full)) System.IO.File.Delete(full);
+                _logger.LogWarning("User ID {Id} not found for deletion", id);
+                return NotFound(new { message = "User not found" });
             }
+            // Try delete avatar file
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(user.AvatarUrl))
+                {
+                    var path = user.AvatarUrl.Split('?')[0].Replace('/', Path.DirectorySeparatorChar);
+                    var full = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", path.TrimStart(Path.DirectorySeparatorChar));
+                    if (System.IO.File.Exists(full)) System.IO.File.Delete(full);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error deleting avatar file for user ID: {Id}", id);
+                /* ignore file delete errors */
+            }
+            _context.Users.Remove(user);
+            await _context.SaveChangesAsync();
+            _logger.LogInformation("User ID {Id} deleted successfully", id);
+            return NoContent();
         }
-        catch { /* ignore file delete errors */ }
-        _context.Users.Remove(user);
-        await _context.SaveChangesAsync();
-        return NoContent();
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database error deleting user ID: {Id}", id);
+            return StatusCode(500, new { message = "Database error occurred" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error deleting user ID: {Id}", id);
+            return StatusCode(500, new { message = "An unexpected error occurred" });
+        }
     }
 
     private bool UserExists(int id) => _context.Users.Any(u => u.Id == id);

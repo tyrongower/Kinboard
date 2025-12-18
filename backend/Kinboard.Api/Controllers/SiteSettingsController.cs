@@ -72,16 +72,23 @@ public class SiteSettingsController : ControllerBase
                     WeatherRefreshSeconds = settings.WeatherRefreshSeconds,
                     WeatherLocation = settings.WeatherLocation
                 };
+                _logger.LogInformation("Retrieved site settings for kiosk user");
                 return Ok(dto);
             }
 
             // Admin users get full settings including API keys
+            _logger.LogInformation("Retrieved site settings for admin user");
             return Ok(settings);
+        }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database error fetching site settings");
+            return StatusCode(500, new { message = "Database error occurred" });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error fetching site settings");
-            throw;
+            _logger.LogError(ex, "Unexpected error fetching site settings");
+            return StatusCode(500, new { message = "An unexpected error occurred" });
         }
     }
 
@@ -91,7 +98,7 @@ public class SiteSettingsController : ControllerBase
     {
         try
         {
-            _logger.LogInformation("Updating site settings");
+            _logger.LogDebug("Updating site settings");
             var settings = await _context.SiteSettings.FirstOrDefaultAsync();
             if (settings == null)
             {
@@ -118,10 +125,15 @@ public class SiteSettingsController : ControllerBase
             _logger.LogInformation("Site settings updated successfully");
             return NoContent();
         }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database error updating site settings");
+            return StatusCode(500, new { message = "Database error occurred" });
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error updating site settings");
-            throw;
+            _logger.LogError(ex, "Unexpected error updating site settings");
+            return StatusCode(500, new { message = "An unexpected error occurred" });
         }
     }
 

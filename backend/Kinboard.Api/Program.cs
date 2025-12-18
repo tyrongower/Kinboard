@@ -4,6 +4,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Kinboard.Api.Data;
 using Kinboard.Api.Services;
+using Kinboard.Api.Middleware;
 using Scalar.AspNetCore;
 using System;
 using System.Data;
@@ -41,9 +42,14 @@ builder.Services.AddMemoryCache();
 builder.Services.AddScoped<Kinboard.Api.Services.ICalendarService, Kinboard.Api.Services.CalendarService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 
+// Add performance tracking services
+builder.Services.AddSingleton<PerformanceStorage>();
+builder.Services.AddHostedService<PerformancePrunerService>();
+
 // Configure SQLite database
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=kinboard.db"));
+    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=kinboard.db")
+        .AddInterceptors(new QueryTrackingInterceptor()));
 
 // Configure JWT authentication
 var jwtSecret = builder.Configuration["Jwt:Secret"];
@@ -144,6 +150,7 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseCors("AllowFrontend");
+app.UseMiddleware<PerformanceTrackingMiddleware>();
 app.UseAuthentication(); // Must come before UseAuthorization
 app.UseAuthorization();
 app.MapControllers();

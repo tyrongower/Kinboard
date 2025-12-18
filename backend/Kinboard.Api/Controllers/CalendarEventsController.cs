@@ -33,7 +33,7 @@ public class CalendarEventsController : ControllerBase
             if (!DateTime.TryParse(start, out var startDt) || !DateTime.TryParse(end, out var endDt))
             {
                 _logger.LogWarning("Invalid start or end date provided: start={Start}, end={End}", start, end);
-                return BadRequest("Invalid start or end");
+                return BadRequest(new { message = "Invalid start or end date format" });
             }
 
             var q = _context.CalendarSources.AsNoTracking().OrderBy(c => c.DisplayOrder);
@@ -66,10 +66,15 @@ public class CalendarEventsController : ControllerBase
             });
             return Ok(shaped);
         }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database error fetching calendar events from {Start} to {End}", start, end);
+            return StatusCode(500, new { message = "Database error occurred" });
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error fetching calendar events from {Start} to {End}", start, end);
-            throw;
+            _logger.LogError(ex, "Unexpected error fetching calendar events from {Start} to {End}", start, end);
+            return StatusCode(500, new { message = "An unexpected error occurred" });
         }
     }
 }

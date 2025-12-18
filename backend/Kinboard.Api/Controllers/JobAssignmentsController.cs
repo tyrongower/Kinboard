@@ -25,56 +25,87 @@ public class JobAssignmentsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<JobAssignmentDto>>> GetAssignments(int jobId, [FromQuery] string? date = null)
     {
-        var job = await _context.Jobs.FindAsync(jobId);
-        if (job == null)
+        try
         {
-            return NotFound("Job not found");
-        }
+            _logger.LogDebug("Fetching assignments for job ID: {JobId}", jobId);
+            var job = await _context.Jobs.FindAsync(jobId);
+            if (job == null)
+            {
+                _logger.LogWarning("Job ID {JobId} not found", jobId);
+                return NotFound(new { message = "Job not found" });
+            }
 
-        var assignments = await _context.JobAssignments
-            .Include(a => a.User)
-            .Where(a => a.JobId == jobId)
-            .OrderBy(a => a.DisplayOrder)
-            .ToListAsync();
-
-        DateTime? occurrenceDate = null;
-        List<JobCompletion>? completions = null;
-
-        if (!string.IsNullOrEmpty(date) && DateTime.TryParse(date, out var parsedDate))
-        {
-            occurrenceDate = parsedDate.Date;
-            completions = await _context.JobCompletions
-                .Where(cc => cc.JobId == jobId && cc.OccurrenceDate.Date == occurrenceDate.Value && cc.JobAssignmentId != null)
+            var assignments = await _context.JobAssignments
+                .Include(a => a.User)
+                .Where(a => a.JobId == jobId)
+                .OrderBy(a => a.DisplayOrder)
                 .ToListAsync();
-        }
 
-        return Ok(assignments.Select(a => MapToDto(a, occurrenceDate, completions?.FirstOrDefault(c => c.JobAssignmentId == a.Id))));
+            DateTime? occurrenceDate = null;
+            List<JobCompletion>? completions = null;
+
+            if (!string.IsNullOrEmpty(date) && DateTime.TryParse(date, out var parsedDate))
+            {
+                occurrenceDate = parsedDate.Date;
+                completions = await _context.JobCompletions
+                    .Where(cc => cc.JobId == jobId && cc.OccurrenceDate.Date == occurrenceDate.Value && cc.JobAssignmentId != null)
+                    .ToListAsync();
+            }
+
+            _logger.LogInformation("Retrieved {Count} assignments for job ID: {JobId}", assignments.Count, jobId);
+            return Ok(assignments.Select(a => MapToDto(a, occurrenceDate, completions?.FirstOrDefault(c => c.JobAssignmentId == a.Id))));
+        }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database error fetching assignments for job ID: {JobId}", jobId);
+            return StatusCode(500, new { message = "Database error occurred" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error fetching assignments for job ID: {JobId}", jobId);
+            return StatusCode(500, new { message = "An unexpected error occurred" });
+        }
     }
 
     // GET: api/jobs/{jobId}/assignments/{id}
     [HttpGet("{id}")]
     public async Task<ActionResult<JobAssignmentDto>> GetAssignment(int jobId, int id, [FromQuery] string? date = null)
     {
-        var assignment = await _context.JobAssignments
-            .Include(a => a.User)
-            .FirstOrDefaultAsync(a => a.Id == id && a.JobId == jobId);
-
-        if (assignment == null)
+        try
         {
-            return NotFound();
+            _logger.LogDebug("Fetching assignment ID: {Id} for job ID: {JobId}", id, jobId);
+            var assignment = await _context.JobAssignments
+                .Include(a => a.User)
+                .FirstOrDefaultAsync(a => a.Id == id && a.JobId == jobId);
+
+            if (assignment == null)
+            {
+                _logger.LogWarning("Assignment ID {Id} not found for job ID: {JobId}", id, jobId);
+                return NotFound(new { message = "Assignment not found" });
+            }
+
+            JobCompletion? completion = null;
+            DateTime? occurrenceDate = null;
+
+            if (!string.IsNullOrEmpty(date) && DateTime.TryParse(date, out var parsedDate))
+            {
+                occurrenceDate = parsedDate.Date;
+                completion = await _context.JobCompletions
+                    .FirstOrDefaultAsync(cc => cc.JobAssignmentId == id && cc.OccurrenceDate.Date == occurrenceDate.Value);
+            }
+
+            return MapToDto(assignment, occurrenceDate, completion);
         }
-
-        JobCompletion? completion = null;
-        DateTime? occurrenceDate = null;
-
-        if (!string.IsNullOrEmpty(date) && DateTime.TryParse(date, out var parsedDate))
+        catch (DbUpdateException ex)
         {
-            occurrenceDate = parsedDate.Date;
-            completion = await _context.JobCompletions
-                .FirstOrDefaultAsync(cc => cc.JobAssignmentId == id && cc.OccurrenceDate.Date == occurrenceDate.Value);
+            _logger.LogError(ex, "Database error fetching assignment ID: {Id} for job ID: {JobId}", id, jobId);
+            return StatusCode(500, new { message = "Database error occurred" });
         }
-
-        return MapToDto(assignment, occurrenceDate, completion);
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error fetching assignment ID: {Id} for job ID: {JobId}", id, jobId);
+            return StatusCode(500, new { message = "An unexpected error occurred" });
+        }
     }
 
     // POST: api/jobs/{jobId}/assignments
@@ -83,16 +114,19 @@ public class JobAssignmentsController : ControllerBase
     {
         try
         {
+            _logger.LogDebug("Creating assignment for job ID: {JobId}, user ID: {UserId}", jobId, dto.UserId);
             var job = await _context.Jobs.FindAsync(jobId);
             if (job == null)
             {
-                return NotFound("Job not found");
+                _logger.LogWarning("Job ID {JobId} not found for assignment creation", jobId);
+                return NotFound(new { message = "Job not found" });
             }
 
             var user = await _context.Users.FindAsync(dto.UserId);
             if (user == null)
             {
-                return BadRequest("User not found");
+                _logger.LogWarning("User ID {UserId} not found for assignment creation", dto.UserId);
+                return BadRequest(new { message = "User not found" });
             }
 
             // Check if assignment already exists for this user
@@ -100,7 +134,8 @@ public class JobAssignmentsController : ControllerBase
                 .FirstOrDefaultAsync(a => a.JobId == jobId && a.UserId == dto.UserId);
             if (existingAssignment != null)
             {
-                return BadRequest("User is already assigned to this job");
+                _logger.LogWarning("User ID {UserId} already assigned to job ID {JobId}", dto.UserId, jobId);
+                return BadRequest(new { message = "User is already assigned to this job" });
             }
 
             // Get max display order
@@ -128,10 +163,15 @@ public class JobAssignmentsController : ControllerBase
             _logger.LogInformation("Created assignment {Id} for job {JobId} and user {UserId}", entity.Id, jobId, dto.UserId);
             return CreatedAtAction(nameof(GetAssignment), new { jobId, id = entity.Id }, MapToDto(entity, null, null));
         }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database error creating assignment for job ID: {JobId}", jobId);
+            return StatusCode(500, new { message = "Database error occurred" });
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error creating assignment for job {JobId}", jobId);
-            throw;
+            _logger.LogError(ex, "Unexpected error creating assignment for job ID: {JobId}", jobId);
+            return StatusCode(500, new { message = "An unexpected error occurred" });
         }
     }
 
@@ -143,15 +183,18 @@ public class JobAssignmentsController : ControllerBase
         {
             if (id != dto.Id)
             {
-                return BadRequest("ID mismatch");
+                _logger.LogWarning("Assignment ID mismatch: URL ID {UrlId} vs Body ID {BodyId}", id, dto.Id);
+                return BadRequest(new { message = "ID mismatch" });
             }
 
+            _logger.LogDebug("Updating assignment ID: {Id} for job ID: {JobId}", id, jobId);
             var assignment = await _context.JobAssignments
                 .FirstOrDefaultAsync(a => a.Id == id && a.JobId == jobId);
 
             if (assignment == null)
             {
-                return NotFound();
+                _logger.LogWarning("Assignment ID {Id} not found for job ID: {JobId}", id, jobId);
+                return NotFound(new { message = "Assignment not found" });
             }
 
             // If changing user, check for duplicate
@@ -161,13 +204,15 @@ public class JobAssignmentsController : ControllerBase
                     .FirstOrDefaultAsync(a => a.JobId == jobId && a.UserId == dto.UserId && a.Id != id);
                 if (existingAssignment != null)
                 {
-                    return BadRequest("User is already assigned to this job");
+                    _logger.LogWarning("User ID {UserId} already assigned to job ID {JobId}", dto.UserId, jobId);
+                    return BadRequest(new { message = "User is already assigned to this job" });
                 }
 
                 var user = await _context.Users.FindAsync(dto.UserId);
                 if (user == null)
                 {
-                    return BadRequest("User not found");
+                    _logger.LogWarning("User ID {UserId} not found for assignment update", dto.UserId);
+                    return BadRequest(new { message = "User not found" });
                 }
                 assignment.UserId = dto.UserId;
             }
@@ -183,10 +228,15 @@ public class JobAssignmentsController : ControllerBase
             _logger.LogInformation("Updated assignment {Id} for job {JobId}", id, jobId);
             return NoContent();
         }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database error updating assignment ID: {Id} for job ID: {JobId}", id, jobId);
+            return StatusCode(500, new { message = "Database error occurred" });
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error updating assignment {Id} for job {JobId}", id, jobId);
-            throw;
+            _logger.LogError(ex, "Unexpected error updating assignment ID: {Id} for job ID: {JobId}", id, jobId);
+            return StatusCode(500, new { message = "An unexpected error occurred" });
         }
     }
 
@@ -196,12 +246,14 @@ public class JobAssignmentsController : ControllerBase
     {
         try
         {
+            _logger.LogDebug("Deleting assignment ID: {Id} for job ID: {JobId}", id, jobId);
             var assignment = await _context.JobAssignments
                 .FirstOrDefaultAsync(a => a.Id == id && a.JobId == jobId);
 
             if (assignment == null)
             {
-                return NotFound();
+                _logger.LogWarning("Assignment ID {Id} not found for job ID: {JobId}", id, jobId);
+                return NotFound(new { message = "Assignment not found" });
             }
 
             _context.JobAssignments.Remove(assignment);
@@ -210,10 +262,15 @@ public class JobAssignmentsController : ControllerBase
             _logger.LogInformation("Deleted assignment {Id} for job {JobId}", id, jobId);
             return NoContent();
         }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database error deleting assignment ID: {Id} for job ID: {JobId}", id, jobId);
+            return StatusCode(500, new { message = "Database error occurred" });
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error deleting assignment {Id} for job {JobId}", id, jobId);
-            throw;
+            _logger.LogError(ex, "Unexpected error deleting assignment ID: {Id} for job ID: {JobId}", id, jobId);
+            return StatusCode(500, new { message = "An unexpected error occurred" });
         }
     }
 
@@ -223,6 +280,7 @@ public class JobAssignmentsController : ControllerBase
     {
         try
         {
+            _logger.LogDebug("Updating assignment order for job ID: {JobId}", jobId);
             var assignments = await _context.JobAssignments
                 .Where(a => a.JobId == jobId)
                 .ToListAsync();
@@ -241,10 +299,15 @@ public class JobAssignmentsController : ControllerBase
             _logger.LogInformation("Updated assignment order for job {JobId}", jobId);
             return NoContent();
         }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database error updating assignment order for job ID: {JobId}", jobId);
+            return StatusCode(500, new { message = "Database error occurred" });
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error updating assignment order for job {JobId}", jobId);
-            throw;
+            _logger.LogError(ex, "Unexpected error updating assignment order for job ID: {JobId}", jobId);
+            return StatusCode(500, new { message = "An unexpected error occurred" });
         }
     }
 
@@ -254,9 +317,11 @@ public class JobAssignmentsController : ControllerBase
     {
         try
         {
+            _logger.LogDebug("Completing assignment ID: {Id} for job ID: {JobId} on date: {Date}", id, jobId, date);
             if (!DateTime.TryParse(date, out var occurrenceDate))
             {
-                return BadRequest("Invalid date format");
+                _logger.LogWarning("Invalid date format for completing assignment: {Date}", date);
+                return BadRequest(new { message = "Invalid date format" });
             }
 
             var assignment = await _context.JobAssignments
@@ -264,7 +329,8 @@ public class JobAssignmentsController : ControllerBase
 
             if (assignment == null)
             {
-                return NotFound();
+                _logger.LogWarning("Assignment ID {Id} not found for job ID: {JobId}", id, jobId);
+                return NotFound(new { message = "Assignment not found" });
             }
 
             var existingCompletion = await _context.JobCompletions
@@ -272,7 +338,8 @@ public class JobAssignmentsController : ControllerBase
 
             if (existingCompletion != null)
             {
-                return BadRequest("Assignment already completed for this date");
+                _logger.LogWarning("Assignment ID {Id} already completed for date: {Date}", id, occurrenceDate.Date);
+                return BadRequest(new { message = "Assignment already completed for this date" });
             }
 
             var completion = new JobCompletion
@@ -290,10 +357,15 @@ public class JobAssignmentsController : ControllerBase
             _logger.LogInformation("Completed assignment {Id} for job {JobId} on {Date}", id, jobId, occurrenceDate.Date);
             return Ok();
         }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database error completing assignment ID: {Id} for job ID: {JobId}", id, jobId);
+            return StatusCode(500, new { message = "Database error occurred" });
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error completing assignment {Id} for job {JobId}", id, jobId);
-            throw;
+            _logger.LogError(ex, "Unexpected error completing assignment ID: {Id} for job ID: {JobId}", id, jobId);
+            return StatusCode(500, new { message = "An unexpected error occurred" });
         }
     }
 
@@ -303,9 +375,11 @@ public class JobAssignmentsController : ControllerBase
     {
         try
         {
+            _logger.LogDebug("Uncompleting assignment ID: {Id} for job ID: {JobId} on date: {Date}", id, jobId, date);
             if (!DateTime.TryParse(date, out var occurrenceDate))
             {
-                return BadRequest("Invalid date format");
+                _logger.LogWarning("Invalid date format for uncompleting assignment: {Date}", date);
+                return BadRequest(new { message = "Invalid date format" });
             }
 
             var completion = await _context.JobCompletions
@@ -313,7 +387,8 @@ public class JobAssignmentsController : ControllerBase
 
             if (completion == null)
             {
-                return NotFound("Completion not found");
+                _logger.LogWarning("Completion not found for assignment ID: {Id} on date: {Date}", id, occurrenceDate.Date);
+                return NotFound(new { message = "Completion not found" });
             }
 
             _context.JobCompletions.Remove(completion);
@@ -322,10 +397,15 @@ public class JobAssignmentsController : ControllerBase
             _logger.LogInformation("Uncompleted assignment {Id} for job {JobId} on {Date}", id, jobId, occurrenceDate.Date);
             return NoContent();
         }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database error uncompleting assignment ID: {Id} for job ID: {JobId}", id, jobId);
+            return StatusCode(500, new { message = "Database error occurred" });
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error uncompleting assignment {Id} for job {JobId}", id, jobId);
-            throw;
+            _logger.LogError(ex, "Unexpected error uncompleting assignment ID: {Id} for job ID: {JobId}", id, jobId);
+            return StatusCode(500, new { message = "An unexpected error occurred" });
         }
     }
 

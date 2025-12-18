@@ -22,12 +22,17 @@ const API_URL = getApiUrl();
 
 // Global access token storage (set by AuthContext)
 let globalAccessToken: string | null = null;
+let tokenRefreshCallback: (() => Promise<string | null>) | null = null;
 
 export function setGlobalAccessToken(token: string | null) {
   globalAccessToken = token;
 }
 
-// Authenticated fetch wrapper
+export function setTokenRefreshCallback(callback: (() => Promise<string | null>) | null) {
+  tokenRefreshCallback = callback;
+}
+
+// Authenticated fetch wrapper with automatic token refresh on 401
 async function authFetch(url: string, options: RequestInit = {}): Promise<Response> {
   const headers = new Headers(options.headers);
 
@@ -36,10 +41,31 @@ async function authFetch(url: string, options: RequestInit = {}): Promise<Respon
     headers.set('Authorization', `Bearer ${globalAccessToken}`);
   }
 
-  return fetch(url, {
+  let response = await fetch(url, {
     ...options,
     headers,
   });
+
+  // If we get 401 and have a refresh callback, try to refresh token and retry once
+  if (response.status === 401 && tokenRefreshCallback) {
+    try {
+      const newToken = await tokenRefreshCallback();
+      if (newToken) {
+        // Update the Authorization header with new token
+        headers.set('Authorization', `Bearer ${newToken}`);
+        // Retry the request with new token
+        response = await fetch(url, {
+          ...options,
+          headers,
+        });
+      }
+    } catch (error) {
+      console.error('Token refresh failed during API call:', error);
+      // Return the original 401 response
+    }
+  }
+
+  return response;
 }
 
 export interface JobAssignment {
@@ -531,3 +557,59 @@ export const shoppingItemApi = {
     if (!response.ok) throw new Error('Failed to clear bought items');
   },
 };
+
+
+// Performance types
+export interface EndpointMetrics {
+  endpoint: string;
+  method: string;
+  requestCount: number;
+  avgRequestTimeMs: number;
+  p50RequestTimeMs: number;
+  p95RequestTimeMs: number;
+  p99RequestTimeMs: number;
+  avgDependencyTimeMs: number;
+  errorRate: number;
+  throughputPerMinute: number;
+  avgQueryCount: number;
+}
+
+export interface PerformanceMetricsResponse {
+  endpoints: EndpointMetrics[];
+  startTime: string;
+  endTime: string;
+  totalRequests: number;
+}
+
+export interface PerformanceMetricsParams {
+  startTime?: string;
+  endTime?: string;
+  endpoint?: string;
+  method?: string;
+  statusCodeMin?: number;
+  statusCodeMax?: number;
+}
+
+export const performanceApi = {
+  async getMetrics(params?: PerformanceMetricsParams): Promise<PerformanceMetricsResponse> {
+    const queryParams = new URLSearchParams();
+
+    if (params?.startTime) queryParams.append('startTime', params.startTime);
+    if (params?.endTime) queryParams.append('endTime', params.endTime);
+    if (params?.endpoint) queryParams.append('endpoint', params.endpoint);
+    if (params?.method) queryParams.append('method', params.method);
+    if (params?.statusCodeMin !== undefined) queryParams.append('statusCodeMin', params.statusCodeMin.toString());
+    if (params?.statusCodeMax !== undefined) queryParams.append('statusCodeMax', params.statusCodeMax.toString());
+
+    const url = `${API_URL}/api/perf/data${queryParams.toString() ? `?${queryParams}` : ''}`;
+    const response = await authFetch(url);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to fetch performance metrics: ${response.status} ${errorText}`);
+    }
+
+    return response.json();
+  },
+};
+

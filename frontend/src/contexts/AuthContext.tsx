@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { AuthResponse, adminLogin, adminLogout, refreshAccessToken, kioskAuthenticate } from '@/lib/auth';
-import { setGlobalAccessToken } from '@/lib/api';
+import { setGlobalAccessToken, setTokenRefreshCallback } from '@/lib/api';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -44,11 +44,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setKioskToken(null);
     // Clear global access token
     setGlobalAccessToken(null);
+    setTokenRefreshCallback(null);
     // Clear from localStorage
     localStorage.removeItem('accessToken');
     localStorage.removeItem('role');
     localStorage.removeItem('kioskToken');
   }, []);
+
+  // Handle token refresh on demand (called by authFetch on 401)
+  const handleTokenRefresh = useCallback(async (): Promise<string | null> => {
+    try {
+      if (role === 'admin') {
+        const response = await refreshAccessToken();
+        updateAuthState(response);
+        return response.accessToken;
+      } else if (role === 'kiosk' && kioskToken) {
+        const response = await kioskAuthenticate(kioskToken);
+        updateAuthState(response);
+        return response.accessToken;
+      }
+      return null;
+    } catch (error) {
+      console.error('Token refresh failed:', error);
+      clearAuthState();
+      return null;
+    }
+  }, [role, kioskToken, updateAuthState, clearAuthState]);
 
   // Attempt to restore auth state on mount
   useEffect(() => {
@@ -86,6 +107,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     initAuth();
   }, [updateAuthState, clearAuthState]);
+
+  // Register token refresh callback with API layer
+  useEffect(() => {
+    if (accessToken && (role === 'admin' || (role === 'kiosk' && kioskToken))) {
+      setTokenRefreshCallback(handleTokenRefresh);
+    } else {
+      setTokenRefreshCallback(null);
+    }
+  }, [accessToken, role, kioskToken, handleTokenRefresh]);
 
   // Auto-refresh access token before expiration (14 minutes, token expires in 15)
   useEffect(() => {

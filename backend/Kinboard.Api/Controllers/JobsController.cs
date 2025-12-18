@@ -76,42 +76,62 @@ public class JobsController : ControllerBase
             _logger.LogInformation("Retrieved {Count} jobs for date {Date}", result.Count, targetDateOnly);
             return Ok(result.Select(c => MapToDto(c, targetDateOnly, legacyCompletionMap.GetValueOrDefault(c.Id), assignmentCompletions.Where(ac => ac.JobId == c.Id).ToList())));
         }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database error fetching jobs for date: {Date}", date);
+            return StatusCode(500, new { message = "Database error occurred" });
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error fetching jobs for date: {Date}", date);
-            throw;
+            _logger.LogError(ex, "Unexpected error fetching jobs for date: {Date}", date);
+            return StatusCode(500, new { message = "An unexpected error occurred" });
         }
     }
 
     [HttpGet("{id}")]
     public async Task<ActionResult<JobDto>> GetJob(int id, [FromQuery] string? date = null)
     {
-        var chore = await _context.Jobs
-            .Include(c => c.Assignments)
-                .ThenInclude(a => a.User)
-            .FirstOrDefaultAsync(c => c.Id == id);
-
-        if (chore == null)
+        try
         {
-            return NotFound();
+            _logger.LogDebug("Fetching job ID: {Id}", id);
+            var chore = await _context.Jobs
+                .Include(c => c.Assignments)
+                    .ThenInclude(a => a.User)
+                .FirstOrDefaultAsync(c => c.Id == id);
+
+            if (chore == null)
+            {
+                _logger.LogWarning("Job ID {Id} not found", id);
+                return NotFound(new { message = "Job not found" });
+            }
+
+            JobCompletion? completion = null;
+            List<JobCompletion>? assignmentCompletions = null;
+            DateTime? occurrenceDate = null;
+
+            if (!string.IsNullOrEmpty(date) && DateTime.TryParse(date, out var parsedDate))
+            {
+                occurrenceDate = parsedDate.Date;
+                var completions = await _context.JobCompletions
+                    .Where(cc => cc.JobId == id && cc.OccurrenceDate.Date == occurrenceDate.Value)
+                    .ToListAsync();
+
+                completion = completions.FirstOrDefault(cc => cc.JobAssignmentId == null);
+                assignmentCompletions = completions.Where(cc => cc.JobAssignmentId != null).ToList();
+            }
+
+            return MapToDto(chore, occurrenceDate, completion, assignmentCompletions);
         }
-
-        JobCompletion? completion = null;
-        List<JobCompletion>? assignmentCompletions = null;
-        DateTime? occurrenceDate = null;
-
-        if (!string.IsNullOrEmpty(date) && DateTime.TryParse(date, out var parsedDate))
+        catch (DbUpdateException ex)
         {
-            occurrenceDate = parsedDate.Date;
-            var completions = await _context.JobCompletions
-                .Where(cc => cc.JobId == id && cc.OccurrenceDate.Date == occurrenceDate.Value)
-                .ToListAsync();
-
-            completion = completions.FirstOrDefault(cc => cc.JobAssignmentId == null);
-            assignmentCompletions = completions.Where(cc => cc.JobAssignmentId != null).ToList();
+            _logger.LogError(ex, "Database error fetching job ID: {Id}", id);
+            return StatusCode(500, new { message = "Database error occurred" });
         }
-
-        return MapToDto(chore, occurrenceDate, completion, assignmentCompletions);
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error fetching job ID: {Id}", id);
+            return StatusCode(500, new { message = "An unexpected error occurred" });
+        }
     }
 
     [HttpPost]
@@ -131,10 +151,15 @@ public class JobsController : ControllerBase
             _logger.LogInformation("Job created successfully with ID: {Id}", entity.Id);
             return CreatedAtAction(nameof(GetJob), new { id = entity.Id }, outDto);
         }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database error creating job: {Title}", dto.Title);
+            return StatusCode(500, new { message = "Database error occurred" });
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error creating job: {Title}", dto.Title);
-            throw;
+            _logger.LogError(ex, "Unexpected error creating job: {Title}", dto.Title);
+            return StatusCode(500, new { message = "An unexpected error occurred" });
         }
     }
 
@@ -169,17 +194,22 @@ public class JobsController : ControllerBase
             _logger.LogError(ex, "Concurrency error updating job ID: {Id}", id);
             if (!JobExists(id))
             {
-                return NotFound();
+                return NotFound(new { message = "Job not found" });
             }
             else
             {
-                throw;
+                return StatusCode(500, new { message = "Concurrency error occurred" });
             }
+        }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database error updating job ID: {Id}", id);
+            return StatusCode(500, new { message = "Database error occurred" });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error updating job ID: {Id}", id);
-            throw;
+            _logger.LogError(ex, "Unexpected error updating job ID: {Id}", id);
+            return StatusCode(500, new { message = "An unexpected error occurred" });
         }
     }
 
@@ -202,10 +232,15 @@ public class JobsController : ControllerBase
             _logger.LogInformation("Job ID {Id} deleted successfully", id);
             return NoContent();
         }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database error deleting job ID: {Id}", id);
+            return StatusCode(500, new { message = "Database error occurred" });
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error deleting job ID: {Id}", id);
-            throw;
+            _logger.LogError(ex, "Unexpected error deleting job ID: {Id}", id);
+            return StatusCode(500, new { message = "An unexpected error occurred" });
         }
     }
 
@@ -304,11 +339,24 @@ public class JobsController : ControllerBase
     {
         try
         {
+            _logger.LogDebug("Uploading image for job ID: {Id}", id);
             var job = await _context.Jobs.FindAsync(id);
-            if (job == null) return NotFound();
+            if (job == null)
+            {
+                _logger.LogWarning("Job ID {Id} not found for image upload", id);
+                return NotFound(new { message = "Job not found" });
+            }
 
-            if (file == null || file.Length == 0) return BadRequest("No file provided");
-            if (file.Length > MaxImageBytes) return BadRequest("File too large (max 5MB)");
+            if (file == null || file.Length == 0)
+            {
+                _logger.LogWarning("No file provided for job ID: {Id}", id);
+                return BadRequest(new { message = "No file provided" });
+            }
+            if (file.Length > MaxImageBytes)
+            {
+                _logger.LogWarning("File too large for job ID: {Id}, size: {Size} bytes", id, file.Length);
+                return BadRequest(new { message = "File too large (max 5MB)" });
+            }
 
             Image image;
             try
@@ -316,15 +364,17 @@ public class JobsController : ControllerBase
                 await using var inStream = file.OpenReadStream();
                 image = await Image.LoadAsync(inStream);
             }
-            catch
+            catch (Exception ex)
             {
-                return BadRequest("Invalid image file");
+                _logger.LogWarning(ex, "Invalid image file for job ID: {Id}", id);
+                return BadRequest(new { message = "Invalid image file" });
             }
 
             if (image.Width < MinDimension || image.Height < MinDimension || image.Width > MaxDimension || image.Height > MaxDimension)
             {
                 image.Dispose();
-                return BadRequest($"Image dimensions out of range ({MinDimension}-{MaxDimension}px)");
+                _logger.LogWarning("Image dimensions out of range for job ID: {Id}, dimensions: {Width}x{Height}", id, image.Width, image.Height);
+                return BadRequest(new { message = $"Image dimensions out of range ({MinDimension}-{MaxDimension}px)" });
             }
 
             // Center-crop to square then resize
@@ -348,10 +398,15 @@ public class JobsController : ControllerBase
             _logger.LogInformation("Image uploaded successfully for job ID: {Id}", id);
             return Ok(new { imageUrl = cacheBusted });
         }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database error uploading image for job ID: {Id}", id);
+            return StatusCode(500, new { message = "Database error occurred" });
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error uploading image for job ID: {Id}", id);
-            throw;
+            _logger.LogError(ex, "Unexpected error uploading image for job ID: {Id}", id);
+            return StatusCode(500, new { message = "An unexpected error occurred" });
         }
     }
 
@@ -363,8 +418,13 @@ public class JobsController : ControllerBase
     {
         try
         {
+            _logger.LogDebug("Deleting image for job ID: {Id}", id);
             var job = await _context.Jobs.FindAsync(id);
-            if (job == null) return NotFound();
+            if (job == null)
+            {
+                _logger.LogWarning("Job ID {Id} not found for image deletion", id);
+                return NotFound(new { message = "Job not found" });
+            }
 
             if (!string.IsNullOrWhiteSpace(job.ImageUrl))
             {
@@ -381,10 +441,15 @@ public class JobsController : ControllerBase
             _logger.LogInformation("Image deleted for job ID: {Id}", id);
             return NoContent();
         }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database error deleting image for job ID: {Id}", id);
+            return StatusCode(500, new { message = "Database error occurred" });
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error deleting image for job ID: {Id}", id);
-            throw;
+            _logger.LogError(ex, "Unexpected error deleting image for job ID: {Id}", id);
+            return StatusCode(500, new { message = "An unexpected error occurred" });
         }
     }
 

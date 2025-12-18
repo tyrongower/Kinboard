@@ -2,14 +2,14 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 /**
- * Middleware to proxy API requests to the backend server
+ * Proxy to forward API requests to the backend server
  *
  * In development: Proxies /api/* to http://localhost:BACKEND_PORT/api/*
  * In production: Can use NEXT_PUBLIC_API_URL for direct client calls (bypasses proxy)
  *
- * This follows 2025 Next.js best practices for API proxying
+ * This follows Next.js 15+ best practices for API proxying
  */
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Only handle API, avatars, and chore-images requests

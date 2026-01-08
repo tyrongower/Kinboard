@@ -51,19 +51,42 @@ public class CalendarsController : ControllerBase
             // Admin users get full calendar sources including iCal URLs
             return Ok(items);
         }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database error retrieving calendar sources");
+            return StatusCode(500, new { message = "Database error occurred" });
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error retrieving all calendar sources");
-            throw;
+            _logger.LogError(ex, "Unexpected error retrieving calendar sources");
+            return StatusCode(500, new { message = "An unexpected error occurred" });
         }
     }
 
     [HttpGet("{id}")]
     public async Task<ActionResult<CalendarSource>> Get(int id)
     {
-        var entity = await _context.CalendarSources.FindAsync(id);
-        if (entity == null) return NotFound();
-        return entity;
+        try
+        {
+            _logger.LogDebug("Fetching calendar source ID: {Id}", id);
+            var entity = await _context.CalendarSources.FindAsync(id);
+            if (entity == null)
+            {
+                _logger.LogWarning("Calendar source ID {Id} not found", id);
+                return NotFound(new { message = "Calendar source not found" });
+            }
+            return entity;
+        }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database error retrieving calendar source ID: {Id}", id);
+            return StatusCode(500, new { message = "Database error occurred" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error retrieving calendar source ID: {Id}", id);
+            return StatusCode(500, new { message = "An unexpected error occurred" });
+        }
     }
 
     [HttpPost]
@@ -72,17 +95,22 @@ public class CalendarsController : ControllerBase
     {
         try
         {
-            _logger.LogInformation("Creating calendar source: {Name}", source.Name);
+            _logger.LogDebug("Creating calendar source: {Name}", source.Name);
             NormalizeColor(source);
             _context.CalendarSources.Add(source);
             await _context.SaveChangesAsync();
             _logger.LogInformation("Calendar source created successfully with ID: {Id}", source.Id);
             return CreatedAtAction(nameof(Get), new { id = source.Id }, source);
         }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database error creating calendar source: {Name}", source.Name);
+            return StatusCode(500, new { message = "Database error occurred" });
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error creating calendar source: {Name}", source.Name);
-            throw;
+            _logger.LogError(ex, "Unexpected error creating calendar source: {Name}", source.Name);
+            return StatusCode(500, new { message = "An unexpected error occurred" });
         }
     }
 
@@ -90,20 +118,29 @@ public class CalendarsController : ControllerBase
     [Authorize(Roles = "admin")] // Admin only
     public async Task<IActionResult> Update(int id, CalendarSource source)
     {
-        if (id != source.Id) return BadRequest();
+        if (id != source.Id)
+        {
+            _logger.LogWarning("Calendar source ID mismatch: URL ID {UrlId} vs Body ID {BodyId}", id, source.Id);
+            return BadRequest(new { message = "ID mismatch" });
+        }
         try
         {
-            _logger.LogInformation("Updating calendar source ID: {Id}", id);
+            _logger.LogDebug("Updating calendar source ID: {Id}", id);
             NormalizeColor(source);
             _context.Entry(source).State = EntityState.Modified;
             await _context.SaveChangesAsync();
             _logger.LogInformation("Calendar source ID {Id} updated successfully", id);
             return NoContent();
         }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database error updating calendar source ID: {Id}", id);
+            return StatusCode(500, new { message = "Database error occurred" });
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error updating calendar source ID: {Id}", id);
-            throw;
+            _logger.LogError(ex, "Unexpected error updating calendar source ID: {Id}", id);
+            return StatusCode(500, new { message = "An unexpected error occurred" });
         }
     }
 
@@ -111,10 +148,14 @@ public class CalendarsController : ControllerBase
     [Authorize(Roles = "admin")] // Admin only
     public async Task<IActionResult> UpdateOrder([FromBody] int[] orderedIds)
     {
-        if (orderedIds == null || orderedIds.Length == 0) return BadRequest("No ids provided");
+        if (orderedIds == null || orderedIds.Length == 0)
+        {
+            _logger.LogWarning("Update calendar order called with no IDs");
+            return BadRequest(new { message = "No IDs provided" });
+        }
         try
         {
-            _logger.LogInformation("Updating calendar source order for {Count} items", orderedIds.Length);
+            _logger.LogDebug("Updating calendar source order for {Count} items", orderedIds.Length);
             var items = await _context.CalendarSources.Where(c => orderedIds.Contains(c.Id)).ToListAsync();
             var indexById = orderedIds.Select((id, idx) => (id, idx)).ToDictionary(x => x.id, x => x.idx);
             foreach (var c in items)
@@ -125,10 +166,15 @@ public class CalendarsController : ControllerBase
             _logger.LogInformation("Calendar source order updated successfully");
             return NoContent();
         }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database error updating calendar source order");
+            return StatusCode(500, new { message = "Database error occurred" });
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error updating calendar source order");
-            throw;
+            _logger.LogError(ex, "Unexpected error updating calendar source order");
+            return StatusCode(500, new { message = "An unexpected error occurred" });
         }
     }
 
@@ -138,22 +184,27 @@ public class CalendarsController : ControllerBase
     {
         try
         {
-            _logger.LogInformation("Deleting calendar source ID: {Id}", id);
+            _logger.LogDebug("Deleting calendar source ID: {Id}", id);
             var entity = await _context.CalendarSources.FindAsync(id);
             if (entity == null)
             {
                 _logger.LogWarning("Calendar source ID {Id} not found for deletion", id);
-                return NotFound();
+                return NotFound(new { message = "Calendar source not found" });
             }
             _context.CalendarSources.Remove(entity);
             await _context.SaveChangesAsync();
             _logger.LogInformation("Calendar source ID {Id} deleted successfully", id);
             return NoContent();
         }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database error deleting calendar source ID: {Id}", id);
+            return StatusCode(500, new { message = "Database error occurred" });
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error deleting calendar source ID: {Id}", id);
-            throw;
+            _logger.LogError(ex, "Unexpected error deleting calendar source ID: {Id}", id);
+            return StatusCode(500, new { message = "An unexpected error occurred" });
         }
     }
 

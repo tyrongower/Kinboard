@@ -156,7 +156,7 @@ Backend (`backend/Kinboard.Api`):
 - `ASPNETCORE_ENVIRONMENT` (`Development` enables Swagger and permissive CORS)
 
 Frontend (`frontend`):
-- `NEXT_PUBLIC_API_URL` (e.g., `http://localhost:5197`). If omitted, proxy routing is used.
+- `NEXT_PUBLIC_API_URL` (e.g., `http://localhost:5000`). If omitted, proxy routing is used.
 
 Production samples:
 - See `backend/Kinboard.Api/appsettings.Production.sample.json`

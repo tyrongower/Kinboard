@@ -5,6 +5,8 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useTheme } from 'react-native-paper';
 import AuthScreen from '../screens/AuthScreen';
 import MainTabNavigator from './MainTabNavigator';
+import TvMain from './TvMain';
+import { isTv } from '../platform/isTv';
 
 export type RootStackParamList = {
   Auth: { token?: string };
@@ -37,7 +39,7 @@ export default function AppNavigator() {
         }}
       >
         <Stack.Screen name="Auth" component={AuthScreen} />
-        <Stack.Screen name="Main" component={MainTabNavigator} />
+        <Stack.Screen name="Main" component={isTv() ? TvMain : MainTabNavigator} />
       </Stack.Navigator>
     </NavigationContainer>
   );

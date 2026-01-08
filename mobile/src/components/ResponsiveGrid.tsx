@@ -9,8 +9,8 @@ interface ResponsiveGridProps {
 
 export default function ResponsiveGrid({ children }: ResponsiveGridProps) {
   const { width } = useWindowDimensions();
-  const columnCount = getColumnCount();
-  const padding = getContentPadding();
+  const columnCount = getColumnCount(width);
+  const padding = getContentPadding(width);
 
   return (
     <View style={[styles.grid, { gap: padding }]}>

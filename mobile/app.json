@@ -3,14 +3,14 @@
     "name": "Kinboard",
     "slug": "kinboard",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#0b1220"
     },
     "ios": {
       "supportsTablet": true
@@ -18,8 +18,9 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#0b1220"
       },
+      "tvBanner": "./assets/adaptive-icon.png",
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
@@ -33,7 +34,8 @@
     },
     "owner": "tyron-gower",
     "plugins": [
-      "expo-font"
+      "expo-font",
+      "./plugins/withAndroidTv"
     ]
   }
 }

@@ -20,4 +20,10 @@ public class SiteSettings
     // Weather API settings
     public string? WeatherApiKey { get; set; }
     public string? WeatherLocation { get; set; }
+
+    // Email settings
+    public string? MailgunApiKey { get; set; }
+    public string? MailgunDomain { get; set; }
+    public string? MailgunFromEmail { get; set; }
+    public string? SiteUrl { get; set; }
 }

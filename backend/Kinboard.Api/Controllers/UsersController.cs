@@ -21,11 +21,13 @@ public class UsersController : ControllerBase
 {
     private readonly AppDbContext _context;
     private readonly ILogger<UsersController> _logger;
+    private readonly IMailService _mailService;
 
-    public UsersController(AppDbContext context, ILogger<UsersController> logger)
+    public UsersController(AppDbContext context, ILogger<UsersController> logger, IMailService mailService)
     {
         _context = context;
         _logger = logger;
+        _mailService = mailService;
     }
 
     private const int MaxAvatarBytes = 5_000_000; // 5 MB
@@ -153,6 +155,14 @@ public class UsersController : ControllerBase
             await _context.SaveChangesAsync();
             _logger.LogInformation("User created successfully with ID: {Id}", user.Id);
 
+            // Trigger welcome email if email is provided
+            if (!string.IsNullOrWhiteSpace(user.Email))
+            {
+                var settings = await _context.SiteSettings.FirstOrDefaultAsync();
+                var siteUrl = settings?.SiteUrl ?? "http://localhost:3000";
+                _ = _mailService.SendWelcomeEmailAsync(user.Email, user.DisplayName, siteUrl);
+            }
+
             // Don't return password hash
             user.PasswordHash = null;
             return CreatedAtAction(nameof(GetUser), new { id = user.Id }, user);
@@ -201,6 +211,7 @@ public class UsersController : ControllerBase
             }
 
             // Update fields
+            var wasAdmin = user.IsAdmin;
             user.DisplayName = request.DisplayName;
             user.ColorHex = colorHex;
             user.Email = request.Email;
@@ -218,6 +229,14 @@ public class UsersController : ControllerBase
             }
 
             await _context.SaveChangesAsync();
+
+            // Trigger admin promotion email if user was promoted
+            if (!wasAdmin && user.IsAdmin && !string.IsNullOrWhiteSpace(user.Email))
+            {
+                var settings = await _context.SiteSettings.FirstOrDefaultAsync();
+                var siteUrl = settings?.SiteUrl ?? "http://localhost:3000";
+                _ = _mailService.SendAdminPromotionEmailAsync(user.Email, user.DisplayName, siteUrl);
+            }
             _logger.LogInformation("User ID {Id} updated successfully", id);
             return NoContent();
         }

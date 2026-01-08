@@ -127,6 +127,10 @@ export interface SiteSettings {
   weatherRefreshSeconds?: number; // default 1800
   weatherApiKey?: string;
   weatherLocation?: string;
+  mailgunApiKey?: string;
+  mailgunDomain?: string;
+  mailgunFromEmail?: string;
+  siteUrl?: string;
 }
 
 export interface CalendarEventItem {

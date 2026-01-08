@@ -41,6 +41,7 @@ builder.Services.AddHttpClient();
 builder.Services.AddMemoryCache();
 builder.Services.AddScoped<Kinboard.Api.Services.ICalendarService, Kinboard.Api.Services.CalendarService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
+builder.Services.AddScoped<IMailService, MailgunService>();
 
 // Add performance tracking services
 builder.Services.AddSingleton<PerformanceStorage>();

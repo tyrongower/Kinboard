@@ -67,7 +67,7 @@ export default function SiteSettingsAdmin() {
 
       {/* Error Message */}
       {error && (
-        <div 
+        <div
           className="mb-4 p-3 rounded-lg"
           style={{ background: 'var(--color-error-muted)', color: 'var(--color-error)' }}
         >
@@ -77,7 +77,7 @@ export default function SiteSettingsAdmin() {
 
       {/* Success Message */}
       {saved && (
-        <div 
+        <div
           className="mb-4 p-3 rounded-lg"
           style={{ background: 'var(--color-success-muted)', color: 'var(--color-success)' }}
         >
@@ -88,13 +88,13 @@ export default function SiteSettingsAdmin() {
       <div className="flex flex-col gap-6">
         {/* Calendar Settings */}
         <div className="card p-6">
-          <h3 
+          <h3
             className="text-lg font-semibold mb-4"
             style={{ color: 'var(--color-text)' }}
           >
             Calendar Settings
           </h3>
-          
+
           <div className="flex flex-col gap-4">
             {/* Default View */}
             <div className="form-group">
@@ -130,13 +130,13 @@ export default function SiteSettingsAdmin() {
 
         {/* Refresh Intervals */}
         <div className="card p-6">
-          <h3 
+          <h3
             className="text-lg font-semibold mb-4"
             style={{ color: 'var(--color-text)' }}
           >
             Refresh Intervals
           </h3>
-          
+
           <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
             {/* Jobs Refresh */}
             <div className="form-group">
@@ -199,13 +199,13 @@ export default function SiteSettingsAdmin() {
 
         {/* Weather API Settings */}
         <div className="card p-6">
-          <h3 
+          <h3
             className="text-lg font-semibold mb-4"
             style={{ color: 'var(--color-text)' }}
           >
             Weather API
           </h3>
-          
+
           <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}>
             {/* API Key */}
             <div className="form-group">
@@ -234,6 +234,69 @@ export default function SiteSettingsAdmin() {
               />
               <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginTop: '0.25rem' }}>
                 City name for weather display
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Email Settings */}
+        <div className="card p-6">
+          <h3
+            className="text-lg font-semibold mb-4"
+            style={{ color: 'var(--color-text)' }}
+          >
+            Email Notifications (Mailgun)
+          </h3>
+
+          <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}>
+            {/* API Key */}
+            <div className="form-group">
+              <label className="label">Mailgun API Key</label>
+              <input
+                type="password"
+                className="input"
+                value={settings?.mailgunApiKey ?? ''}
+                onChange={(e) => setSettings(s => s ? { ...s, mailgunApiKey: e.target.value } : s)}
+                placeholder="key-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+              />
+            </div>
+
+            {/* Domain */}
+            <div className="form-group">
+              <label className="label">Mailgun Domain</label>
+              <input
+                type="text"
+                className="input"
+                value={settings?.mailgunDomain ?? ''}
+                onChange={(e) => setSettings(s => s ? { ...s, mailgunDomain: e.target.value } : s)}
+                placeholder="mg.yourdomain.com"
+              />
+            </div>
+
+            {/* From Email */}
+            <div className="form-group">
+              <label className="label">From Email Address</label>
+              <input
+                type="email"
+                className="input"
+                value={settings?.mailgunFromEmail ?? ''}
+                onChange={(e) => setSettings(s => s ? { ...s, mailgunFromEmail: e.target.value } : s)}
+                placeholder="Kinboard <noreply@yourdomain.com>"
+              />
+            </div>
+
+            {/* Site URL */}
+            <div className="form-group">
+              <label className="label">Site Public URL</label>
+              <input
+                type="url"
+                className="input"
+                value={settings?.siteUrl ?? ''}
+                onChange={(e) => setSettings(s => s ? { ...s, siteUrl: e.target.value } : s)}
+                placeholder="https://kinboard.yourdomain.com"
+              />
+              <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginTop: '0.25rem' }}>
+                Used in email notifications for links back to the site
               </p>
             </div>
           </div>

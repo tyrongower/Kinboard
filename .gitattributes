@@ -1,7 +1,8 @@
-﻿* text=auto
+* text=auto
 
 # Treat common script and code files as text with LF endings
 *.sh text eol=lf
+gradlew text eol=lf
 *.md text eol=lf
 *.ts text eol=lf
 *.tsx text eol=lf

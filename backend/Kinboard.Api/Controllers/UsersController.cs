@@ -40,10 +40,7 @@ public class UsersController : ControllerBase
         try
         {
             _logger.LogDebug("Fetching all users");
-            var query = _context.Users
-                .AsNoTracking()
-                .OrderBy(u => u.DisplayOrder)
-                .ThenBy(u => u.DisplayName);
+            var query = _context.Users.AsNoTracking();
 
             // Filter out users hidden from kiosk if requested by kiosk role
             if (User.IsInRole("kiosk"))
@@ -51,7 +48,10 @@ public class UsersController : ControllerBase
                 query = query.Where(u => !u.HideFromKiosk);
             }
 
-            var users = await query.ToListAsync();
+            var users = await query
+                .OrderBy(u => u.DisplayOrder)
+                .ThenBy(u => u.DisplayName)
+                .ToListAsync();
 
             // Don't expose password hashes or admin status to kiosks
             if (User.IsInRole("kiosk"))

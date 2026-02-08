@@ -30,6 +30,8 @@ public class JobsController : ControllerBase
         try
         {
             _logger.LogDebug("Fetching jobs for date: {Date}", date ?? "all");
+            var isKiosk = User.IsInRole("kiosk");
+
             if (string.IsNullOrEmpty(date))
             {
                 var all = await _context.Jobs
@@ -37,7 +39,6 @@ public class JobsController : ControllerBase
                         .ThenInclude(a => a.User)
                     .ToListAsync();
                 _logger.LogInformation("Retrieved {Count} total jobs", all.Count);
-                var isKiosk = User.IsInRole("kiosk");
                 return Ok(all.Select(c => MapToDto(c, null, null, null, isKiosk)));
             }
 
@@ -76,7 +77,6 @@ public class JobsController : ControllerBase
                 .ToList();
 
             _logger.LogInformation("Retrieved {Count} jobs for date {Date}", result.Count, targetDateOnly);
-            var isKiosk = User.IsInRole("kiosk");
             return Ok(result.Select(c => MapToDto(c, targetDateOnly, legacyCompletionMap.GetValueOrDefault(c.Id), assignmentCompletions.Where(ac => ac.JobId == c.Id).ToList(), isKiosk)));
         }
         catch (DbUpdateException ex)

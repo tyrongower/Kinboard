@@ -61,7 +61,7 @@ public class SetupController : ControllerBase
             // Hash password
             var passwordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
 
-            User adminUser;
+            User? adminUser;
 
             if (request.UserId.HasValue)
             {

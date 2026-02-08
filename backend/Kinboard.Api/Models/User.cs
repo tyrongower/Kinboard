@@ -13,6 +13,9 @@ public class User
     // Preference: whether the kiosk should hide completed jobs by default for this user
     public bool HideCompletedInKiosk { get; set; } = true;
 
+    // Whether to hide this user from kiosk Jobs view entirely
+    public bool HideFromKiosk { get; set; } = false;
+
     // Optional URL to an avatar image (served as static file)
     public string? AvatarUrl { get; set; }
 

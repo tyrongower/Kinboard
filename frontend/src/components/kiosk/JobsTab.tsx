@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { jobApi, jobAssignmentApi, Job, userApi, User, siteSettingsApi, SiteSettings } from '@/lib/api';
+import { formatDateForApi } from '@/lib/dateUtils';
 
 interface JobsTabProps {
   selectedDate: Date;
@@ -81,7 +82,7 @@ export default function JobsTab({ selectedDate }: JobsTabProps) {
   const loadJobs = async (silent = false) => {
     try {
       if (!silent) setLoading(true);
-      const dateStr = selectedDate.toISOString().split('T')[0];
+      const dateStr = formatDateForApi(selectedDate);
       const data = await jobApi.getByDate(dateStr);
       setJobs(data);
     } catch (error) {
@@ -98,16 +99,16 @@ export default function JobsTab({ selectedDate }: JobsTabProps) {
         console.warn('No assignment found for job:', job.id);
         return;
       }
-      
-      const dateStr = selectedDate.toISOString().split('T')[0];
+
+      const dateStr = formatDateForApi(selectedDate);
       const isCurrentlyCompleted = assignment.isCompleted ?? false;
-      
+
       if (isCurrentlyCompleted) {
         await jobAssignmentApi.uncomplete(job.id, assignment.id, dateStr);
       } else {
         await jobAssignmentApi.complete(job.id, assignment.id, dateStr);
       }
-      
+
       await loadJobs();
     } catch (error) {
       console.error('Error updating job:', error);

@@ -1,17 +1,18 @@
 ﻿'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { 
-  CalendarEventItem, 
-  SiteSettings, 
-  CalendarSource, 
-  calendarEventsApi, 
-  siteSettingsApi, 
-  calendarsApi, 
-  jobApi, 
-  userApi, 
-  User 
+import {
+  CalendarEventItem,
+  SiteSettings,
+  CalendarSource,
+  calendarEventsApi,
+  siteSettingsApi,
+  calendarsApi,
+  jobApi,
+  userApi,
+  User
 } from '@/lib/api';
+import { formatDateForApi } from '@/lib/dateUtils';
 
 type ViewType = 'Day' | 'Week' | 'Month';
 
@@ -143,7 +144,7 @@ export default function CalendarTab({ selectedDate, onToday }: Props) {
     const dates: string[] = [];
     const cursor = new Date(r.start);
     while (cursor < r.end) {
-      dates.push(cursor.toISOString().split('T')[0]);
+      dates.push(formatDateForApi(cursor));
       cursor.setDate(cursor.getDate() + 1);
     }
     

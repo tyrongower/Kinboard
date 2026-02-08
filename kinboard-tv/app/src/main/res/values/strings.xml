@@ -1,0 +1,41 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Kinboard TV</string>
+    
+    <!-- Login Screen -->
+    <string name="login_title">Kinboard TV</string>
+    <string name="login_subtitle">Enter your kiosk token to continue</string>
+    <string name="server_url_label">Server URL</string>
+    <string name="server_url_hint">https://your-server.com</string>
+    <string name="kiosk_token_label">Kiosk Token</string>
+    <string name="kiosk_token_hint">Enter your kiosk token</string>
+    <string name="authenticate_button">Authenticate</string>
+    <string name="help_text">Contact your administrator for a valid kiosk token</string>
+    <string name="invalid_token_error">Invalid kiosk token</string>
+    <string name="network_error">Network error. Please check your connection.</string>
+    <string name="session_expired">Session expired. Please login again.</string>
+    
+    <!-- Jobs Screen -->
+    <string name="jobs_title">Jobs</string>
+    <string name="prev_button">Prev</string>
+    <string name="today_button">Today</string>
+    <string name="next_button">Next</string>
+    <string name="all_done">✓ All done!</string>
+    <string name="completed_stats">%1$d of %2$d completed</string>
+    <string name="unassigned">Unassigned</string>
+    
+    <!-- Accessibility -->
+    <string name="previous_day">Previous day</string>
+    <string name="go_to_today">Go to today</string>
+    <string name="next_day">Next day</string>
+    <string name="mark_completed">Mark %1$s as completed</string>
+    <string name="mark_not_completed">Mark %1$s as not completed</string>
+    <string name="show_completed_for">Show completed for %1$s</string>
+    <string name="hide_completed_for">Hide completed for %1$s</string>
+    <string name="user_avatar">Avatar for %1$s</string>
+    <string name="job_image">Image for %1$s</string>
+    <string name="toggle_visibility">Toggle visibility</string>
+    <string name="retry">Retry</string>
+    <string name="loading">Loading…</string>
+    <string name="error_loading">Error loading data</string>
+</resources>

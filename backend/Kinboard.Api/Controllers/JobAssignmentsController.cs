@@ -44,7 +44,7 @@ public class JobAssignmentsController : ControllerBase
             DateTime? occurrenceDate = null;
             List<JobCompletion>? completions = null;
 
-            if (!string.IsNullOrEmpty(date) && DateTime.TryParse(date, out var parsedDate))
+            if (!string.IsNullOrEmpty(date) && DateTime.TryParseExact(date, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var parsedDate))
             {
                 occurrenceDate = parsedDate.Date;
                 completions = await _context.JobCompletions
@@ -87,7 +87,7 @@ public class JobAssignmentsController : ControllerBase
             JobCompletion? completion = null;
             DateTime? occurrenceDate = null;
 
-            if (!string.IsNullOrEmpty(date) && DateTime.TryParse(date, out var parsedDate))
+            if (!string.IsNullOrEmpty(date) && DateTime.TryParseExact(date, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var parsedDate))
             {
                 occurrenceDate = parsedDate.Date;
                 completion = await _context.JobCompletions
@@ -318,10 +318,11 @@ public class JobAssignmentsController : ControllerBase
         try
         {
             _logger.LogDebug("Completing assignment ID: {Id} for job ID: {JobId} on date: {Date}", id, jobId, date);
-            if (!DateTime.TryParse(date, out var occurrenceDate))
+            // Parse date in YYYY-MM-DD format without timezone conversion
+            if (!DateTime.TryParseExact(date, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var occurrenceDate))
             {
-                _logger.LogWarning("Invalid date format for completing assignment: {Date}", date);
-                return BadRequest(new { message = "Invalid date format" });
+                _logger.LogWarning("Invalid date format for completing assignment: {Date}. Expected YYYY-MM-DD format.", date);
+                return BadRequest(new { message = "Invalid date format. Expected YYYY-MM-DD format." });
             }
 
             var assignment = await _context.JobAssignments
@@ -376,10 +377,11 @@ public class JobAssignmentsController : ControllerBase
         try
         {
             _logger.LogDebug("Uncompleting assignment ID: {Id} for job ID: {JobId} on date: {Date}", id, jobId, date);
-            if (!DateTime.TryParse(date, out var occurrenceDate))
+            // Parse date in YYYY-MM-DD format without timezone conversion
+            if (!DateTime.TryParseExact(date, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var occurrenceDate))
             {
-                _logger.LogWarning("Invalid date format for uncompleting assignment: {Date}", date);
-                return BadRequest(new { message = "Invalid date format" });
+                _logger.LogWarning("Invalid date format for uncompleting assignment: {Date}. Expected YYYY-MM-DD format.", date);
+                return BadRequest(new { message = "Invalid date format. Expected YYYY-MM-DD format." });
             }
 
             var completion = await _context.JobCompletions

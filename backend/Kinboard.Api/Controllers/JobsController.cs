@@ -30,6 +30,8 @@ public class JobsController : ControllerBase
         try
         {
             _logger.LogDebug("Fetching jobs for date: {Date}", date ?? "all");
+            var isKiosk = User.IsInRole("kiosk");
+
             if (string.IsNullOrEmpty(date))
             {
                 var all = await _context.Jobs
@@ -37,13 +39,14 @@ public class JobsController : ControllerBase
                         .ThenInclude(a => a.User)
                     .ToListAsync();
                 _logger.LogInformation("Retrieved {Count} total jobs", all.Count);
-                return Ok(all.Select(c => MapToDto(c, null)));
+                return Ok(all.Select(c => MapToDto(c, null, null, null, isKiosk)));
             }
 
-            if (!DateTime.TryParse(date, out var targetDate))
+            // Parse date in YYYY-MM-DD format without timezone conversion
+            if (!DateTime.TryParseExact(date, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var targetDate))
             {
-                _logger.LogWarning("Invalid date format provided: {Date}", date);
-                return BadRequest("Invalid date format");
+                _logger.LogWarning("Invalid date format provided: {Date}. Expected YYYY-MM-DD format.", date);
+                return BadRequest("Invalid date format. Expected YYYY-MM-DD format.");
             }
 
             var targetDateOnly = targetDate.Date;
@@ -74,7 +77,7 @@ public class JobsController : ControllerBase
                 .ToList();
 
             _logger.LogInformation("Retrieved {Count} jobs for date {Date}", result.Count, targetDateOnly);
-            return Ok(result.Select(c => MapToDto(c, targetDateOnly, legacyCompletionMap.GetValueOrDefault(c.Id), assignmentCompletions.Where(ac => ac.JobId == c.Id).ToList())));
+            return Ok(result.Select(c => MapToDto(c, targetDateOnly, legacyCompletionMap.GetValueOrDefault(c.Id), assignmentCompletions.Where(ac => ac.JobId == c.Id).ToList(), isKiosk)));
         }
         catch (DbUpdateException ex)
         {
@@ -109,7 +112,7 @@ public class JobsController : ControllerBase
             List<JobCompletion>? assignmentCompletions = null;
             DateTime? occurrenceDate = null;
 
-            if (!string.IsNullOrEmpty(date) && DateTime.TryParse(date, out var parsedDate))
+            if (!string.IsNullOrEmpty(date) && DateTime.TryParseExact(date, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var parsedDate))
             {
                 occurrenceDate = parsedDate.Date;
                 var completions = await _context.JobCompletions
@@ -120,7 +123,8 @@ public class JobsController : ControllerBase
                 assignmentCompletions = completions.Where(cc => cc.JobAssignmentId != null).ToList();
             }
 
-            return MapToDto(chore, occurrenceDate, completion, assignmentCompletions);
+            var isKiosk = User.IsInRole("kiosk");
+            return MapToDto(chore, occurrenceDate, completion, assignmentCompletions, isKiosk);
         }
         catch (DbUpdateException ex)
         {
@@ -147,7 +151,7 @@ public class JobsController : ControllerBase
 
             // reload with assignments for DTO
             await _context.Entry(entity).Collection(c => c.Assignments).LoadAsync();
-            var outDto = MapToDto(entity, null);
+            var outDto = MapToDto(entity, null, null, null, false);
             _logger.LogInformation("Job created successfully with ID: {Id}", entity.Id);
             return CreatedAtAction(nameof(GetJob), new { id = entity.Id }, outDto);
         }
@@ -249,7 +253,7 @@ public class JobsController : ControllerBase
         return _context.Jobs.Any(e => e.Id == id);
     }
 
-    private static JobDto MapToDto(Job c, DateTime? occurrenceDate, JobCompletion? completion = null, List<JobCompletion>? assignmentCompletions = null)
+    private static JobDto MapToDto(Job c, DateTime? occurrenceDate, JobCompletion? completion = null, List<JobCompletion>? assignmentCompletions = null, bool filterHiddenUsers = false)
     {
         // Filter assignments based on recurrence when querying by date
         var assignmentsToMap = c.Assignments ?? new List<JobAssignment>();
@@ -258,6 +262,12 @@ public class JobsController : ControllerBase
         if (!c.UseSharedRecurrence && occurrenceDate.HasValue)
         {
             assignmentsToMap = assignmentsToMap.Where(a => RecurrenceEvaluator.AssignmentOccursOn(a, occurrenceDate.Value)).ToList();
+        }
+
+        // Filter out assignments for users hidden from kiosk
+        if (filterHiddenUsers)
+        {
+            assignmentsToMap = assignmentsToMap.Where(a => a.User == null || !a.User.HideFromKiosk).ToList();
         }
 
         // Map assignments with their completion status

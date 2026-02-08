@@ -1,0 +1,10 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.KinboardTV" parent="@style/Theme.Leanback">
+        <item name="android:colorPrimary">#60a5fa</item>
+        <item name="android:colorPrimaryDark">#1e3a8a</item>
+        <item name="android:colorAccent">#34d399</item>
+        <item name="android:windowBackground">#0f1419</item>
+        <item name="android:colorBackground">#0f1419</item>
+    </style>
+</resources>

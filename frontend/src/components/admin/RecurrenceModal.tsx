@@ -1,6 +1,7 @@
 ﻿'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { formatDateForApi } from '@/lib/dateUtils';
 
 type Frequency = 'DAILY' | 'WEEKLY';
 
@@ -16,7 +17,7 @@ const DayCodes: { code: string; label: string }[] = [
 
 function formatDateInput(d?: string | null) {
   if (!d) return '';
-  return new Date(d).toISOString().split('T')[0];
+  return formatDateForApi(new Date(d));
 }
 
 function parseRRule(rrule: string | undefined) {

@@ -102,6 +102,7 @@ export interface User {
   displayName: string;
   colorHex: string;
   hideCompletedInKiosk?: boolean;
+  hideFromKiosk?: boolean;
   avatarUrl?: string | null;
   displayOrder?: number;
   email?: string | null;

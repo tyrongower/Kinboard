@@ -403,6 +403,9 @@ namespace Kinboard.Api.Migrations
                         .HasColumnType("INTEGER")
                         .HasDefaultValue(true);
 
+                    b.Property<bool>("HideFromKiosk")
+                        .HasColumnType("INTEGER");
+
                     b.Property<bool>("IsAdmin")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER")

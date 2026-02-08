@@ -45,7 +45,7 @@ export default function UsersAdmin() {
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<User | null>(null);
-  const [form, setForm] = useState<Omit<User, 'id'>>({ displayName: '', colorHex: '#777777', email: null, isAdmin: false });
+  const [form, setForm] = useState<Omit<User, 'id'>>({ displayName: '', colorHex: '#777777', email: null, isAdmin: false, hideFromKiosk: false });
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [password, setPassword] = useState('');
   // drag & drop state
@@ -69,7 +69,7 @@ export default function UsersAdmin() {
 
   const openCreate = () => {
     setEditing(null);
-    setForm({ displayName: '', colorHex: '#777777', email: null, isAdmin: false });
+    setForm({ displayName: '', colorHex: '#777777', email: null, isAdmin: false, hideFromKiosk: false });
     setAvatarFile(null);
     setPassword('');
     setOpen(true);
@@ -77,7 +77,7 @@ export default function UsersAdmin() {
 
   const openEdit = (u: User) => {
     setEditing(u);
-    setForm({ displayName: u.displayName, colorHex: u.colorHex, email: u.email || null, isAdmin: u.isAdmin || false });
+    setForm({ displayName: u.displayName, colorHex: u.colorHex, email: u.email || null, isAdmin: u.isAdmin || false, hideFromKiosk: u.hideFromKiosk || false });
     setAvatarFile(null);
     setPassword('');
     setOpen(true);
@@ -97,6 +97,7 @@ export default function UsersAdmin() {
         colorHex: form.colorHex,
         email: form.email || null,
         isAdmin: form.isAdmin || false,
+        hideFromKiosk: form.hideFromKiosk || false,
         password: password || undefined, // Only include if set
       };
 
@@ -351,6 +352,23 @@ export default function UsersAdmin() {
                   </label>
                   <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginTop: '0.5rem' }}>
                     Admins can access admin panel and manage all settings
+                  </p>
+                </div>
+
+                {/* Hide from Kiosk */}
+                <div className="form-group">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={form.hideFromKiosk || false}
+                      onChange={(e) => setForm((f) => ({ ...f, hideFromKiosk: e.target.checked }))}
+                      className="w-5 h-5 rounded"
+                      style={{ accentColor: 'var(--color-primary)' }}
+                    />
+                    <span className="label mb-0">Hide from Kiosk</span>
+                  </label>
+                  <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginTop: '0.5rem' }}>
+                    Hidden users will not appear in kiosk Jobs view
                   </p>
                 </div>
 

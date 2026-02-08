@@ -16,15 +16,18 @@ public class AuthController : ControllerBase
     private readonly AppDbContext _context;
     private readonly ITokenService _tokenService;
     private readonly ILogger<AuthController> _logger;
+    private readonly IWebHostEnvironment _env;
 
     public AuthController(
         AppDbContext context,
         ITokenService tokenService,
-        ILogger<AuthController> logger)
+        ILogger<AuthController> logger,
+        IWebHostEnvironment env)
     {
         _context = context;
         _tokenService = tokenService;
         _logger = logger;
+        _env = env;
     }
 
     /// <summary>
@@ -351,7 +354,7 @@ public class AuthController : ControllerBase
         var cookieOptions = new CookieOptions
         {
             HttpOnly = true, // Prevents XSS attacks
-            Secure = true, // HTTPS only
+            Secure = _env.IsProduction(), // HTTPS only in production, allow HTTP in development
             SameSite = SameSiteMode.Lax, // CSRF protection
             Expires = DateTimeOffset.UtcNow.AddDays(7)
         };

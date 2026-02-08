@@ -31,9 +31,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(response.user || null);
     // Update global access token for API calls
     setGlobalAccessToken(response.accessToken);
-    // Persist access token to localStorage
-    localStorage.setItem('accessToken', response.accessToken);
-    localStorage.setItem('role', response.role);
+    // Note: We don't store access tokens in localStorage anymore.
+    // Admin users rely on refresh token cookies (7 days).
+    // Kiosk users store their kiosk token separately (handled in authenticateKiosk).
   }, []);
 
   // Clear auth state
@@ -45,9 +45,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Clear global access token
     setGlobalAccessToken(null);
     setTokenRefreshCallback(null);
-    // Clear from localStorage
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('role');
+    // Clear kiosk token from localStorage (admin tokens are in cookies)
     localStorage.removeItem('kioskToken');
   }, []);
 
@@ -75,30 +73,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const initAuth = async () => {
       try {
-        // Check if we have stored auth data
-        const storedAccessToken = localStorage.getItem('accessToken');
-        const storedRole = localStorage.getItem('role') as 'admin' | 'kiosk' | null;
+        // First, try to use refresh token cookie (lasts 7 days) for admin users
+        // This is more reliable than localStorage which stores short-lived access tokens
+        try {
+          const response = await refreshAccessToken();
+          updateAuthState(response);
+          setIsLoading(false);
+          return;
+        } catch (refreshError) {
+          // Refresh token failed or doesn't exist, check for kiosk token
+        }
+
+        // If refresh token failed, check if we have a stored kiosk token
         const storedKioskToken = localStorage.getItem('kioskToken');
-
-        if (storedAccessToken && storedRole) {
-          // Restore from localStorage
-          setAccessToken(storedAccessToken);
-          setRole(storedRole);
-          setGlobalAccessToken(storedAccessToken);
-
-          if (storedRole === 'kiosk' && storedKioskToken) {
-            setKioskToken(storedKioskToken);
-          }
-
+        if (storedKioskToken) {
+          const response = await kioskAuthenticate(storedKioskToken);
+          updateAuthState(response);
+          setKioskToken(storedKioskToken);
           setIsLoading(false);
           return;
         }
 
-        // If no stored token, try admin refresh token (HttpOnly cookie)
-        const response = await refreshAccessToken();
-        updateAuthState(response);
+        // No valid auth found, user needs to log in
+        clearAuthState();
       } catch (error) {
-        // No valid refresh token or stored auth, user needs to log in
+        // Auth restoration failed, user needs to log in
         clearAuthState();
       } finally {
         setIsLoading(false);

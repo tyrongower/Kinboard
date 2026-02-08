@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { jobApi, jobAssignmentApi, Job, JobAssignment, userApi, User } from '@/lib/api';
+import { formatDateForApi } from '@/lib/dateUtils';
 import RecurrenceModal from './RecurrenceModal';
 
 const IconPlus = () => (
@@ -36,8 +37,8 @@ const IconUsers = () => (
 
 function formatDateInput(d?: string) {
   if (!d) return '';
-  // Expecting ISO; return yyyy-MM-dd
-  return new Date(d).toISOString().split('T')[0];
+  // Parse the ISO date string and format as YYYY-MM-DD in local timezone
+  return formatDateForApi(new Date(d));
 }
 
 export default function JobsAdmin() {
@@ -79,7 +80,7 @@ export default function JobsAdmin() {
 
   const openCreate = () => {
     setEditing(null);
-    const today = new Date().toISOString().split('T')[0];
+    const today = formatDateForApi(new Date());
     setForm({ title: '', description: '', recurrence: '', recurrenceStartDate: today, recurrenceEndDate: null, recurrenceIndefinite: true, useSharedRecurrence: true, assignments: [] });
     setImageFile(null);
     setOpen(true);

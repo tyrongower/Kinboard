@@ -7,6 +7,7 @@ import com.kinboard.tv.data.api.ApiClient
 import com.kinboard.tv.data.model.Job
 import com.kinboard.tv.data.model.JobAssignment
 import com.kinboard.tv.data.model.User
+import com.kinboard.tv.data.model.WeatherData
 import com.kinboard.tv.ui.components.UserJobData
 import kotlinx.coroutines.Job as CoroutineJob
 import kotlinx.coroutines.delay
@@ -16,6 +17,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.time.LocalDate
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
 
 data class JobsUiState(
     val selectedDate: LocalDate = LocalDate.now(),
@@ -25,7 +28,10 @@ data class JobsUiState(
     val hideCompletedMap: Map<Int, Boolean> = emptyMap(),
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
-    val focusedUserId: Int? = null // null means focus first card
+    val focusedUserId: Int? = null, // null means focus first card
+    val weather: WeatherData? = null,
+    val isWeatherLoading: Boolean = false,
+    val currentTime: String = ""
 )
 
 class JobsViewModel(application: Application) : AndroidViewModel(application) {
@@ -34,11 +40,17 @@ class JobsViewModel(application: Application) : AndroidViewModel(application) {
     val uiState: StateFlow<JobsUiState> = _uiState.asStateFlow()
 
     private var refreshJob: CoroutineJob? = null
-    private val refreshIntervalMs = 30_000L // 10 seconds
+    private val refreshIntervalMs = 30_000L // 30 seconds
+    private var weatherRefreshJob: CoroutineJob? = null
+    private val weatherRefreshIntervalMs = 300_000L // 5 minutes
+    private var timeUpdateJob: CoroutineJob? = null
 
     init {
         loadData()
+        loadWeather()
         startAutoRefresh()
+        startWeatherRefresh()
+        startTimeUpdates()
     }
 
     fun loadData() {
@@ -308,8 +320,60 @@ class JobsViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun loadWeather() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isWeatherLoading = true)
+
+            try {
+                val weatherResponse = ApiClient.getApi(getApplication()).getWeather()
+                if (weatherResponse.isSuccessful) {
+                    _uiState.value = _uiState.value.copy(
+                        weather = weatherResponse.body(),
+                        isWeatherLoading = false
+                    )
+                } else {
+                    _uiState.value = _uiState.value.copy(
+                        weather = null,
+                        isWeatherLoading = false
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    weather = null,
+                    isWeatherLoading = false
+                )
+            }
+        }
+    }
+
+    private fun startWeatherRefresh() {
+        weatherRefreshJob?.cancel()
+        weatherRefreshJob = viewModelScope.launch {
+            while (isActive) {
+                delay(weatherRefreshIntervalMs)
+                if (!_uiState.value.isWeatherLoading) {
+                    loadWeather()
+                }
+            }
+        }
+    }
+
+    private fun startTimeUpdates() {
+        timeUpdateJob?.cancel()
+        timeUpdateJob = viewModelScope.launch {
+            val timeFormatter = DateTimeFormatter.ofPattern("h:mm a")
+            while (isActive) {
+                val currentTime = LocalTime.now().format(timeFormatter)
+                _uiState.value = _uiState.value.copy(currentTime = currentTime)
+                delay(60_000L) // Update every minute
+            }
+        }
+    }
+
     override fun onCleared() {
         super.onCleared()
         refreshJob?.cancel()
+        weatherRefreshJob?.cancel()
+        timeUpdateJob?.cancel()
     }
 }

@@ -40,6 +40,7 @@ val OnSurfaceVariant = Color(0xFF94A3B8)   // Secondary text, muted content
 val Outline = Color(0xFF334155)            // slate-700 - Dividers, borders
 val OutlineVariant = Color(0xFF475569)     // slate-600
 val BorderSubtle = Color(0x1FFFFFFF)       // rgba(255,255,255,0.12)
+val SurfaceBorder = Color(0xFF334155)      // slate-700 - Surface borders
 
 // Elevation Levels (Surface tints)
 val ElevationLevel0 = Color.Transparent

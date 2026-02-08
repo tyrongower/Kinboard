@@ -48,7 +48,12 @@ interface KinboardApi {
     ): Response<HideCompletedResponse>
     
     // Site Settings
-    
+
     @GET("api/sitesettings")
     suspend fun getSiteSettings(): Response<SiteSettings>
+
+    // Weather
+
+    @GET("api/weather")
+    suspend fun getWeather(): Response<WeatherData>
 }

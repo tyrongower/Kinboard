@@ -16,9 +16,11 @@ import androidx.tv.material3.Text
 import com.kinboard.tv.data.model.Job
 import com.kinboard.tv.data.model.JobAssignment
 import com.kinboard.tv.data.model.User
+import com.kinboard.tv.data.model.WeatherData
 import com.kinboard.tv.ui.components.KinboardOutlinedButton
 import com.kinboard.tv.ui.components.PersonJobCard
 import com.kinboard.tv.ui.components.UserJobData
+import com.kinboard.tv.ui.components.WeatherWidget
 import com.kinboard.tv.ui.theme.*
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -33,6 +35,9 @@ fun JobsScreen(
     isLoading: Boolean,
     errorMessage: String?,
     focusedUserId: Int?,
+    weather: WeatherData?,
+    isWeatherLoading: Boolean,
+    currentTime: String,
     onPrevDay: () -> Unit,
     onToday: () -> Unit,
     onNextDay: () -> Unit,
@@ -55,45 +60,57 @@ fun JobsScreen(
             modifier = Modifier.fillMaxSize()
         ) {
             // Header Section
-            Row(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = Layout.headerMarginBottom),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Title and Date
-                Column {
-                    Text(
-                        text = "Jobs",
-                        style = KinboardTypography.headlineLarge,
-                        color = OnBackground
-                    )
-                    Text(
-                        text = formattedDate,
-                        style = KinboardTypography.titleLarge,
-                        color = OnBackground,
-                        modifier = Modifier.alpha(0.9f)
-                    )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Top
+                ) {
+                    // Title and Date
+                    Column {
+                        Text(
+                            text = "Jobs",
+                            style = KinboardTypography.headlineLarge,
+                            color = OnBackground
+                        )
+                        Text(
+                            text = formattedDate,
+                            style = KinboardTypography.titleLarge,
+                            color = OnBackground,
+                            modifier = Modifier.alpha(0.9f)
+                        )
+                    }
+
+                    // Date Navigation Buttons
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(Layout.buttonGap)
+                    ) {
+                        KinboardOutlinedButton(
+                            text = "Prev",
+                            onClick = onPrevDay
+                        )
+                        KinboardOutlinedButton(
+                            text = "Today",
+                            onClick = onToday
+                        )
+                        KinboardOutlinedButton(
+                            text = "Next",
+                            onClick = onNextDay
+                        )
+                    }
                 }
 
-                // Date Navigation Buttons
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(Layout.buttonGap)
-                ) {
-                    KinboardOutlinedButton(
-                        text = "Prev",
-                        onClick = onPrevDay
-                    )
-                    KinboardOutlinedButton(
-                        text = "Today",
-                        onClick = onToday
-                    )
-                    KinboardOutlinedButton(
-                        text = "Next",
-                        onClick = onNextDay
-                    )
-                }
+                // Weather Widget
+                WeatherWidget(
+                    weather = weather,
+                    isLoading = isWeatherLoading,
+                    currentTime = currentTime
+                )
             }
 
             // Content Area

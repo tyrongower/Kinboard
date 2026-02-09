@@ -32,6 +32,8 @@ public class AppDbContext : DbContext
             entity.Property(e => e.Description).HasMaxLength(1000);
             entity.Property(e => e.CreatedAt).IsRequired();
             entity.Property(e => e.UseSharedRecurrence).IsRequired().HasDefaultValue(true);
+            entity.Property(e => e.DisplayOrder).IsRequired().HasDefaultValue(0);
+            entity.HasIndex(e => e.DisplayOrder);
 
             // Relationship: Job -> JobAssignments (multi-user)
             entity

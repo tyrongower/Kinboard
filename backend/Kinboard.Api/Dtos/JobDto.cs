@@ -6,6 +6,7 @@ public class JobDto
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
     public string? ImageUrl { get; set; }
+    public int DisplayOrder { get; set; }
     public DateTime CreatedAt { get; set; }
 
     // Recurrence settings (shared by all assignments when UseSharedRecurrence is true)

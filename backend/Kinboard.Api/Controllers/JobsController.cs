@@ -37,6 +37,8 @@ public class JobsController : ControllerBase
                 var all = await _context.Jobs
                     .Include(c => c.Assignments)
                         .ThenInclude(a => a.User)
+                    .OrderBy(j => j.DisplayOrder)
+                    .ThenBy(j => j.Title)
                     .ToListAsync();
                 _logger.LogInformation("Retrieved {Count} total jobs", all.Count);
                 return Ok(all.Select(c => MapToDto(c, null, null, null, isKiosk)));
@@ -55,6 +57,8 @@ public class JobsController : ControllerBase
             var allChores = await _context.Jobs
                 .Include(c => c.Assignments)
                     .ThenInclude(a => a.User)
+                .OrderBy(j => j.DisplayOrder)
+                .ThenBy(j => j.Title)
                 .ToListAsync();
 
             var result = allChores.Where(c =>
@@ -146,6 +150,13 @@ public class JobsController : ControllerBase
         {
             _logger.LogInformation("Creating job: {Title}", dto.Title);
             var entity = await MapFromDtoAsync(dto);
+
+            // Auto-assign display order (append to end)
+            var maxOrder = await _context.Jobs.AnyAsync()
+                ? await _context.Jobs.MaxAsync(j => j.DisplayOrder)
+                : -1;
+            entity.DisplayOrder = maxOrder + 1;
+
             _context.Jobs.Add(entity);
             await _context.SaveChangesAsync();
 
@@ -163,6 +174,42 @@ public class JobsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unexpected error creating job: {Title}", dto.Title);
+            return StatusCode(500, new { message = "An unexpected error occurred" });
+        }
+    }
+
+    [HttpPut("order")]
+    [Authorize(Roles = "admin")]
+    public async Task<IActionResult> UpdateOrder([FromBody] int[] orderedIds)
+    {
+        try
+        {
+            _logger.LogDebug("Updating job order for {Count} items", orderedIds?.Length ?? 0);
+
+            if (orderedIds == null || orderedIds.Length == 0)
+            {
+                _logger.LogWarning("Update order called with no IDs");
+                return BadRequest(new { message = "No job ids provided" });
+            }
+
+            var jobs = await _context.Jobs.Where(j => orderedIds.Contains(j.Id)).ToListAsync();
+            var indexById = orderedIds.Select((id, idx) => (id, idx)).ToDictionary(x => x.id, x => x.idx);
+            foreach (var j in jobs)
+            {
+                j.DisplayOrder = indexById.TryGetValue(j.Id, out var idx) ? idx : j.DisplayOrder;
+            }
+            await _context.SaveChangesAsync();
+            _logger.LogInformation("Job order updated successfully for {Count} items", jobs.Count);
+            return NoContent();
+        }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database error updating job order");
+            return StatusCode(500, new { message = "Database error occurred" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error updating job order");
             return StatusCode(500, new { message = "An unexpected error occurred" });
         }
     }
@@ -302,6 +349,7 @@ public class JobsController : ControllerBase
             Title = c.Title,
             Description = c.Description,
             ImageUrl = c.ImageUrl,
+            DisplayOrder = c.DisplayOrder,
             CreatedAt = c.CreatedAt,
             Recurrence = c.Recurrence,
             RecurrenceStartDate = c.RecurrenceStartDate,
@@ -324,6 +372,7 @@ public class JobsController : ControllerBase
     {
         entity.Title = dto.Title;
         entity.Description = dto.Description;
+        entity.DisplayOrder = dto.DisplayOrder;
         entity.CreatedAt = dto.CreatedAt == default ? entity.CreatedAt : dto.CreatedAt;
         entity.Recurrence = dto.Recurrence;
         entity.RecurrenceStartDate = dto.RecurrenceStartDate;

@@ -35,6 +35,17 @@ const IconUsers = () => (
   </svg>
 );
 
+const IconGripVertical = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="9" cy="5" r="1" />
+    <circle cx="9" cy="12" r="1" />
+    <circle cx="9" cy="19" r="1" />
+    <circle cx="15" cy="5" r="1" />
+    <circle cx="15" cy="12" r="1" />
+    <circle cx="15" cy="19" r="1" />
+  </svg>
+);
+
 function formatDateInput(d?: string) {
   if (!d) return '';
   // Parse the ISO date string and format as YYYY-MM-DD in local timezone
@@ -50,7 +61,8 @@ export default function JobsAdmin() {
   const [editing, setEditing] = useState<Job | null>(null);
   const [form, setForm] = useState<Partial<Job>>({ title: '', description: '', recurrence: '', recurrenceStartDate: null, recurrenceEndDate: null, recurrenceIndefinite: false, useSharedRecurrence: true, assignments: [] });
   const [recurrenceUiOpen, setRecurrenceUiOpen] = useState(false);
-  
+  const [draggingId, setDraggingId] = useState<number | null>(null);
+
   // Assignment management state
   const [assignmentDialogOpen, setAssignmentDialogOpen] = useState(false);
   const [editingAssignment, setEditingAssignment] = useState<JobAssignment | null>(null);
@@ -117,6 +129,7 @@ export default function JobsAdmin() {
           id: editing.id,
           title: (form.title as string) ?? editing.title,
           description: (form.description as string) || undefined,
+          displayOrder: editing.displayOrder,
           createdAt: form.createdAt || editing.createdAt,
           recurrence: (form.recurrence as string) || undefined,
           recurrenceStartDate: form.recurrenceStartDate ? new Date(form.recurrenceStartDate as string).toISOString() : null,
@@ -138,6 +151,7 @@ export default function JobsAdmin() {
         const newJob = await jobApi.create({
           title: (form.title as string) ?? '',
           description: (form.description as string) || undefined,
+          displayOrder: jobs.length,
           recurrence: (form.recurrence as string) || undefined,
           recurrenceStartDate: form.recurrenceStartDate ? new Date(form.recurrenceStartDate as string).toISOString() : null,
           recurrenceEndDate: form.recurrenceIndefinite ? null : (form.recurrenceEndDate ? new Date(form.recurrenceEndDate as string).toISOString() : null),
@@ -315,6 +329,28 @@ export default function JobsAdmin() {
     }
   };
 
+  // Drag & drop handlers
+  const handleDragStart = (id: number) => setDraggingId(id);
+  const handleDragEnd = () => setDraggingId(null);
+  const handleDragOver = (e: React.DragEvent) => e.preventDefault();
+  const handleDrop = async (targetId: number) => {
+    if (draggingId === null || draggingId === targetId) return;
+    const oldIndex = jobs.findIndex((j) => j.id === draggingId);
+    const newIndex = jobs.findIndex((j) => j.id === targetId);
+    if (oldIndex < 0 || newIndex < 0) return;
+    const reordered = [...jobs];
+    const [moved] = reordered.splice(oldIndex, 1);
+    reordered.splice(newIndex, 0, moved);
+    setJobs(reordered);
+    setDraggingId(null);
+    try {
+      await jobApi.updateOrder(reordered.map((j) => j.id));
+    } catch (e: any) {
+      setError(e?.message || 'Failed to update order');
+      await load();
+    }
+  };
+
   // Get users not already assigned
   const availableUsers = users.filter(u => 
     !form.assignments?.some(a => a.userId === u.id) || 
@@ -352,6 +388,7 @@ export default function JobsAdmin() {
         <table className="table">
           <thead>
             <tr>
+              <th className="w-10"></th>
               <th>Title</th>
               <th>Assigned To</th>
               <th>Recurrence</th>
@@ -360,7 +397,20 @@ export default function JobsAdmin() {
           </thead>
           <tbody>
             {jobs.map((c) => (
-              <tr key={c.id}>
+              <tr
+                key={c.id}
+                draggable
+                onDragStart={() => handleDragStart(c.id)}
+                onDragEnd={handleDragEnd}
+                onDragOver={handleDragOver}
+                onDrop={() => handleDrop(c.id)}
+                style={{
+                  background: draggingId === c.id ? 'var(--color-surface)' : undefined,
+                }}
+              >
+                <td className="p-2 cursor-grab" style={{ color: 'var(--color-text-muted)' }}>
+                  <IconGripVertical />
+                </td>
                 <td>
                   <div className="flex flex-col gap-1">
                     <span style={{ color: 'var(--color-text)', fontWeight: 600 }}>{c.title}</span>
@@ -415,7 +465,7 @@ export default function JobsAdmin() {
             ))}
             {!loading && jobs.length === 0 && (
               <tr>
-                <td colSpan={4}>
+                <td colSpan={5}>
                   <div className="empty-state">
                     <div className="empty-state-icon">✓</div>
                     <p>No jobs yet</p>

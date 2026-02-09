@@ -60,49 +60,26 @@ fun JobsScreen(
             modifier = Modifier.fillMaxSize()
         ) {
             // Header Section
-            Column(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = Layout.headerMarginBottom),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Top
-                ) {
-                    // Title and Date
-                    Column {
-                        Text(
-                            text = "Jobs",
-                            style = KinboardTypography.headlineLarge,
-                            color = OnBackground
-                        )
-                        Text(
-                            text = formattedDate,
-                            style = KinboardTypography.titleLarge,
-                            color = OnBackground,
-                            modifier = Modifier.alpha(0.9f)
-                        )
-                    }
-
-                    // Date Navigation Buttons
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(Layout.buttonGap)
-                    ) {
-                        KinboardOutlinedButton(
-                            text = "Prev",
-                            onClick = onPrevDay
-                        )
-                        KinboardOutlinedButton(
-                            text = "Today",
-                            onClick = onToday
-                        )
-                        KinboardOutlinedButton(
-                            text = "Next",
-                            onClick = onNextDay
-                        )
-                    }
+                // Title and Date
+                Column {
+                    Text(
+                        text = "Jobs",
+                        style = KinboardTypography.headlineLarge,
+                        color = OnBackground
+                    )
+                    Text(
+                        text = formattedDate,
+                        style = KinboardTypography.titleLarge,
+                        color = OnBackground,
+                        modifier = Modifier.alpha(0.9f)
+                    )
                 }
 
                 // Weather Widget
@@ -111,6 +88,24 @@ fun JobsScreen(
                     isLoading = isWeatherLoading,
                     currentTime = currentTime
                 )
+
+                // Date Navigation Buttons
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(Layout.buttonGap)
+                ) {
+                    KinboardOutlinedButton(
+                        text = "Prev",
+                        onClick = onPrevDay
+                    )
+                    KinboardOutlinedButton(
+                        text = "Today",
+                        onClick = onToday
+                    )
+                    KinboardOutlinedButton(
+                        text = "Next",
+                        onClick = onNextDay
+                    )
+                }
             }
 
             // Content Area

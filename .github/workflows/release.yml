@@ -11,7 +11,6 @@ jobs:
       contents: write
       packages: write
       
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -61,34 +60,28 @@ jobs:
       - name: Build Android TV APK
         run: |
           cd kinboard-tv
-          ./gradlew assembleRelease --no-daemon
-
-      - name: Sign Android TV APK (optional)
-        continue-on-error: true
-        run: |
-          cd kinboard-tv
-          if [ -n "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]; then
-            echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > release.keystore
-            jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 \
-              -keystore release.keystore \
-              -storepass "${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" \
-              -keypass "${{ secrets.ANDROID_KEY_PASSWORD }}" \
-              app/build/outputs/apk/release/app-release-unsigned.apk \
-              "${{ secrets.ANDROID_KEY_ALIAS }}"
-            rm release.keystore
-            echo "APK signed successfully"
-          else
-            echo "Keystore not configured, skipping signing"
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > release.keystore
+            export KEYSTORE_PATH=$(pwd)/release.keystore
+            export KEYSTORE_PASSWORD="$STORE_PASSWORD"
+            export KEY_ALIAS="$ALIAS"
+            export KEY_PASSWORD="$KEY_PASS"
           fi
+          ./gradlew assembleRelease --no-daemon
+          rm -f release.keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
 
       - name: Rename TV APK
         run: |
           VERSION="${{ steps.version.outputs.VERSION }}"
           cd kinboard-tv/app/build/outputs/apk/release
-          if [ -f "app-release-unsigned.apk" ]; then
-            mv app-release-unsigned.apk kinboard-tv-${VERSION}.apk
-          elif [ -f "app-release.apk" ]; then
-            mv app-release.apk kinboard-tv-${VERSION}.apk
+          APK=$(ls *.apk 2>/dev/null | head -1)
+          if [ -n "$APK" ]; then
+            mv "$APK" kinboard-tv-${VERSION}.apk
           fi
 
       # Backend Build

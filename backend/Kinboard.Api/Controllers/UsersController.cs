@@ -111,6 +111,7 @@ public class UsersController : ControllerBase
         public string ColorHex { get; set; } = "#777777";
         public string? Email { get; set; }
         public bool IsAdmin { get; set; } = false;
+        public bool HideFromKiosk { get; set; } = false;
         public string? Password { get; set; } // Plain text password, will be hashed
     }
 
@@ -153,6 +154,7 @@ public class UsersController : ControllerBase
                 ColorHex = colorHex,
                 Email = request.Email,
                 IsAdmin = request.IsAdmin,
+                HideFromKiosk = request.HideFromKiosk,
                 PasswordHash = passwordHash
             };
 
@@ -182,6 +184,7 @@ public class UsersController : ControllerBase
         public string ColorHex { get; set; } = "#777777";
         public string? Email { get; set; }
         public bool IsAdmin { get; set; } = false;
+        public bool HideFromKiosk { get; set; } = false;
         public string? Password { get; set; } // If provided, will update password
     }
 
@@ -212,6 +215,7 @@ public class UsersController : ControllerBase
             user.ColorHex = colorHex;
             user.Email = request.Email;
             user.IsAdmin = request.IsAdmin;
+            user.HideFromKiosk = request.HideFromKiosk;
 
             // Update password if provided
             if (!string.IsNullOrWhiteSpace(request.Password))

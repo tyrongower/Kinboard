@@ -87,6 +87,7 @@ export interface Job {
   title: string;
   description?: string;
   imageUrl?: string | null;
+  displayOrder: number;
   createdAt: string;
   recurrence?: string;
   recurrenceStartDate?: string | null;
@@ -216,6 +217,15 @@ export const jobApi = {
       method: 'DELETE',
     });
     if (!response.ok) throw new Error('Failed to delete image');
+  },
+
+  async updateOrder(order: number[]): Promise<void> {
+    const response = await authFetch(`${API_URL}/api/jobs/order`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(order),
+    });
+    if (!response.ok) throw new Error('Failed to update job order');
   },
 };
 

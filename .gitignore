@@ -50,6 +50,7 @@ backend/**/Migrations/**/~tmp*/
 backend/**/appsettings.*.local.json
 backend/**/appsettings.Local.json
 backend/**/appsettings.Development.local.json
+backend/**/appsettings.Production.json
 
 # Coverage / analysis
 backend/**/TestResults/

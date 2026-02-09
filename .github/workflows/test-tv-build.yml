@@ -1,10 +1,6 @@
 name: Test TV Build
 
 on:
-  push:
-    branches:
-      - mobile-app
-      - google-tv-build
   workflow_dispatch:  # Allow manual trigger
 
 jobs:

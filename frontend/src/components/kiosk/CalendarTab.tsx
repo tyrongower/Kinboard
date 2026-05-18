@@ -96,7 +96,7 @@ export default function CalendarTab({ selectedDate, onToday }: Props) {
       setSettings(setts);
       setView((setts?.defaultView as ViewType) ?? 'Day');
       setVisibleIds(new Set(srcs.filter(s => s.enabled).map(s => s.id)));
-      setUsers(us);
+      setUsers(us.filter((u) => !u.hideFromKiosk));
       setLoading(false);
     })();
   }, []);

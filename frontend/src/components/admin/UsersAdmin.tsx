@@ -424,6 +424,10 @@ export default function UsersAdmin() {
                   <label className="label">Email</label>
                   <input
                     type="email"
+                    inputMode="email"
+                    autoComplete="email"
+                    autoCapitalize="off"
+                    spellCheck={false}
                     className="input"
                     value={form.email || ''}
                     onChange={(e) => setForm((f) => ({ ...f, email: e.target.value || null }))}

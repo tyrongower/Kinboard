@@ -37,6 +37,18 @@ const IconGripVertical = () => (
   </svg>
 );
 
+const IconChevronUp = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="18 15 12 9 6 15" />
+  </svg>
+);
+
+const IconChevronDown = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="6 9 12 15 18 9" />
+  </svg>
+);
+
 export default function ShoppingAdmin() {
   const [lists, setLists] = useState<ShoppingList[]>([]);
   const [loading, setLoading] = useState(true);
@@ -150,6 +162,20 @@ export default function ShoppingAdmin() {
     }
   };
 
+  const moveList = async (index: number, direction: -1 | 1) => {
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= lists.length) return;
+    const reordered = [...lists];
+    [reordered[index], reordered[newIndex]] = [reordered[newIndex], reordered[index]];
+    setLists(reordered);
+    try {
+      await shoppingListApi.updateOrder(reordered.map((l) => l.id));
+    } catch (e: any) {
+      setError(e?.message || 'Failed to update order');
+      await load();
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -167,8 +193,8 @@ export default function ShoppingAdmin() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="section-header" style={{ marginBottom: 0 }}>
+        <div className="min-w-0">
           <h2 className="text-2xl font-bold" style={{ color: 'var(--color-text)' }}>
             Shopping Lists
           </h2>
@@ -204,192 +230,262 @@ export default function ShoppingAdmin() {
           </button>
         </div>
       ) : (
-        <div className="card overflow-hidden">
-          <table className="w-full">
-            <thead>
-              <tr style={{ background: 'var(--color-surface)' }}>
-                <th className="w-10"></th>
-                <th className="text-left p-4 font-semibold" style={{ color: 'var(--color-text)' }}>
-                  List
-                </th>
-                <th className="text-left p-4 font-semibold" style={{ color: 'var(--color-text)' }}>
-                  Items
-                </th>
-                <th className="text-left p-4 font-semibold" style={{ color: 'var(--color-text)' }}>
-                  Color
-                </th>
-                <th className="w-32"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {lists.map((list) => {
-                const importantCount = list.items?.filter((i) => i.isImportant && !i.isBought).length || 0;
-                const unboughtCount = list.items?.filter((i) => !i.isBought).length || 0;
-                return (
-                  <tr
-                    key={list.id}
-                    draggable
-                    onDragStart={() => handleDragStart(list.id)}
-                    onDragEnd={handleDragEnd}
-                    onDragOver={handleDragOver}
-                    onDrop={() => handleDrop(list.id)}
-                    className="border-t transition-colors"
-                    style={{
-                      borderColor: 'var(--color-divider)',
-                      background: draggingId === list.id ? 'var(--color-surface)' : undefined,
-                    }}
-                  >
-                    <td className="p-2 cursor-grab" style={{ color: 'var(--color-text-muted)' }}>
-                      <IconGripVertical />
-                    </td>
-                    <td className="p-4">
-                      <div className="flex items-center gap-3">
-                        {list.avatarUrl ? (
-                          <div className="relative group">
-                            <img
-                              src={list.avatarUrl}
-                              alt={list.name}
-                              className="avatar avatar-md object-cover"
-                              style={{ border: `2px solid ${list.colorHex}` }}
-                            />
-                            <button
-                              onClick={() => handleDeleteAvatar(list)}
-                              className="absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                              style={{ background: 'var(--color-error)', color: 'white' }}
-                              title="Remove avatar"
-                            >
-                              ×
+        <>
+          {/* Desktop Table */}
+          <div className="admin-table-desktop card overflow-hidden">
+            <table className="w-full">
+              <thead>
+                <tr style={{ background: 'var(--color-surface)' }}>
+                  <th className="w-24"></th>
+                  <th className="text-left p-4 font-semibold" style={{ color: 'var(--color-text)' }}>
+                    List
+                  </th>
+                  <th className="text-left p-4 font-semibold" style={{ color: 'var(--color-text)' }}>
+                    Items
+                  </th>
+                  <th className="text-left p-4 font-semibold" style={{ color: 'var(--color-text)' }}>
+                    Color
+                  </th>
+                  <th className="w-32"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {lists.map((list, idx) => {
+                  const importantCount = list.items?.filter((i) => i.isImportant && !i.isBought).length || 0;
+                  const unboughtCount = list.items?.filter((i) => !i.isBought).length || 0;
+                  return (
+                    <tr
+                      key={list.id}
+                      draggable
+                      onDragStart={() => handleDragStart(list.id)}
+                      onDragEnd={handleDragEnd}
+                      onDragOver={handleDragOver}
+                      onDrop={() => handleDrop(list.id)}
+                      className="border-t transition-colors"
+                      style={{
+                        borderColor: 'var(--color-divider)',
+                        background: draggingId === list.id ? 'var(--color-surface)' : undefined,
+                      }}
+                    >
+                      <td className="p-2" style={{ color: 'var(--color-text-muted)' }}>
+                        <div className="flex items-center gap-1">
+                          <span className="drag-handle"><IconGripVertical /></span>
+                          <div className="reorder-btns">
+                            <button className="icon-btn" onClick={() => moveList(idx, -1)} disabled={idx === 0} aria-label="Move up">
+                              <IconChevronUp />
+                            </button>
+                            <button className="icon-btn" onClick={() => moveList(idx, 1)} disabled={idx === lists.length - 1} aria-label="Move down">
+                              <IconChevronDown />
                             </button>
                           </div>
-                        ) : (
-                          <div
-                            className="avatar avatar-md"
-                            style={{ background: list.colorHex, color: 'white' }}
-                          >
-                            {list.name[0]?.toUpperCase()}
-                          </div>
-                        )}
-                        <div>
-                          <span className="font-medium" style={{ color: 'var(--color-text)' }}>
-                            {list.name}
-                          </span>
-                          {importantCount > 0 && (
-                            <span
-                              className="ml-2 px-2 py-0.5 rounded-full text-xs font-medium"
-                              style={{ background: 'var(--color-warning-muted)', color: 'var(--color-warning)' }}
-                            >
-                              {importantCount} important
-                            </span>
-                          )}
                         </div>
-                      </div>
-                    </td>
-                    <td className="p-4" style={{ color: 'var(--color-text-secondary)' }}>
-                      {unboughtCount} item{unboughtCount !== 1 ? 's' : ''}
-                    </td>
-                    <td className="p-4">
-                      <div
-                        className="w-8 h-8 rounded-lg"
-                        style={{ background: list.colorHex }}
-                        title={list.colorHex}
+                      </td>
+                      <td className="p-4">
+                        <div className="flex items-center gap-3">
+                          {list.avatarUrl ? (
+                            <div className="relative group">
+                              <img
+                                src={list.avatarUrl}
+                                alt={list.name}
+                                className="avatar avatar-md object-cover"
+                                style={{ border: `2px solid ${list.colorHex}` }}
+                                loading="lazy"
+                              />
+                              <button
+                                onClick={() => handleDeleteAvatar(list)}
+                                className="absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                style={{ background: 'var(--color-error)', color: 'white', minHeight: 0 }}
+                                title="Remove avatar"
+                              >
+                                ×
+                              </button>
+                            </div>
+                          ) : (
+                            <div
+                              className="avatar avatar-md"
+                              style={{ background: list.colorHex, color: 'white' }}
+                            >
+                              {list.name[0]?.toUpperCase()}
+                            </div>
+                          )}
+                          <div>
+                            <span className="font-medium" style={{ color: 'var(--color-text)' }}>
+                              {list.name}
+                            </span>
+                            {importantCount > 0 && (
+                              <span
+                                className="ml-2 px-2 py-0.5 rounded-full text-xs font-medium"
+                                style={{ background: 'var(--color-warning-muted)', color: 'var(--color-warning)' }}
+                              >
+                                {importantCount} important
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-4" style={{ color: 'var(--color-text-secondary)' }}>
+                        {unboughtCount} item{unboughtCount !== 1 ? 's' : ''}
+                      </td>
+                      <td className="p-4">
+                        <div
+                          className="w-8 h-8 rounded-lg"
+                          style={{ background: list.colorHex }}
+                          title={list.colorHex}
+                        />
+                      </td>
+                      <td className="p-4">
+                        <div className="flex items-center gap-2 justify-end">
+                          <button
+                            onClick={() => openEdit(list)}
+                            className="icon-btn icon-btn-sm"
+                            aria-label="Edit"
+                            title="Edit"
+                          >
+                            <IconEdit />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(list.id)}
+                            className="icon-btn icon-btn-sm icon-btn-danger"
+                            aria-label="Delete"
+                            title="Delete"
+                          >
+                            <IconTrash />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile Cards */}
+          <div className="admin-cards-mobile">
+            {lists.map((list, idx) => {
+              const importantCount = list.items?.filter((i) => i.isImportant && !i.isBought).length || 0;
+              const unboughtCount = list.items?.filter((i) => !i.isBought).length || 0;
+              return (
+                <div key={list.id} className="admin-card-row">
+                  <div className="admin-card-row-header">
+                    {list.avatarUrl ? (
+                      <img
+                        src={list.avatarUrl}
+                        alt={list.name}
+                        className="avatar avatar-md object-cover shrink-0"
+                        style={{ border: `2px solid ${list.colorHex}` }}
+                        loading="lazy"
                       />
-                    </td>
-                    <td className="p-4">
-                      <div className="flex items-center gap-2 justify-end">
-                        <button
-                          onClick={() => openEdit(list)}
-                          className="btn-ghost p-2 rounded-lg"
-                          style={{ color: 'var(--color-text-secondary)' }}
-                          title="Edit"
-                        >
-                          <IconEdit />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(list.id)}
-                          className="btn-ghost p-2 rounded-lg"
-                          style={{ color: 'var(--color-error)' }}
-                          title="Delete"
-                        >
-                          <IconTrash />
-                        </button>
+                    ) : (
+                      <div className="avatar avatar-md shrink-0" style={{ background: list.colorHex, color: 'white' }}>
+                        {list.name[0]?.toUpperCase()}
                       </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium truncate" style={{ color: 'var(--color-text)' }}>
+                        {list.name}
+                      </div>
+                      <div style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)' }}>
+                        {unboughtCount} item{unboughtCount !== 1 ? 's' : ''}
+                        {importantCount > 0 && ` · ${importantCount} important`}
+                      </div>
+                    </div>
+                    <div className="reorder-btns shrink-0">
+                      <button className="icon-btn" onClick={() => moveList(idx, -1)} disabled={idx === 0} aria-label="Move up">
+                        <IconChevronUp />
+                      </button>
+                      <button className="icon-btn" onClick={() => moveList(idx, 1)} disabled={idx === lists.length - 1} aria-label="Move down">
+                        <IconChevronDown />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="admin-card-row-actions">
+                    <button className="btn btn-secondary flex-1" onClick={() => openEdit(list)}>
+                      <IconEdit />
+                      Edit
+                    </button>
+                    <button
+                      className="btn btn-secondary"
+                      style={{ color: 'var(--color-error)', borderColor: 'var(--color-error)' }}
+                      onClick={() => handleDelete(list.id)}
+                      aria-label={`Delete ${list.name}`}
+                    >
+                      <IconTrash />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
       )}
 
       {/* Create/Edit Dialog */}
       {open && (
-        <div className="modal-backdrop" onClick={closeDialog}>
-          <div
-            className="modal-content"
-            onClick={(e) => e.stopPropagation()}
-            style={{ maxWidth: 500 }}
-          >
-            <h3 className="text-xl font-bold mb-6" style={{ color: 'var(--color-text)' }}>
-              {editing ? 'Edit Shopping List' : 'New Shopping List'}
-            </h3>
-
-            <div className="space-y-4">
-              {/* Name */}
-              <div>
-                <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text)' }}>
-                  Name
-                </label>
-                <input
-                  type="text"
-                  className="input w-full"
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  placeholder="e.g., Groceries"
-                  autoFocus
-                />
-              </div>
-
-              {/* Color */}
-              <div>
-                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text)' }}>
-                  Color
-                </label>
-                <ColorPicker
-                  value={form.colorHex}
-                  onChange={(val) => setForm({ ...form, colorHex: val })}
-                  variant="popover"
-                  showText={false}
-                  allowCustom={false}
-                />
-              </div>
-
-              {/* Avatar */}
-              <div>
-                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text)' }}>
-                  Avatar (optional)
-                </label>
-                <div className="flex items-center gap-4">
-                  {(editing?.avatarUrl || avatarFile) && (
-                    <img
-                      src={avatarFile ? URL.createObjectURL(avatarFile) : editing?.avatarUrl || ''}
-                      alt="Preview"
-                      className="avatar avatar-lg object-cover"
-                      style={{ border: `2px solid ${form.colorHex}` }}
-                    />
-                  )}
+        <div className="dialog-overlay" onClick={closeDialog}>
+          <div className="dialog" onClick={(e) => e.stopPropagation()}>
+            <div className="dialog-header">
+              <h3 className="dialog-title">
+                {editing ? 'Edit Shopping List' : 'New Shopping List'}
+              </h3>
+            </div>
+            <div className="dialog-content">
+              <div className="flex flex-col gap-4">
+                {/* Name */}
+                <div className="form-group">
+                  <label className="label">Name</label>
                   <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => setAvatarFile(e.target.files?.[0] || null)}
-                    className="text-sm"
-                    style={{ color: 'var(--color-text-secondary)' }}
+                    type="text"
+                    className="input"
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    placeholder="e.g., Groceries"
+                    autoFocus
                   />
+                </div>
+
+                {/* Color */}
+                <div className="form-group">
+                  <label className="label">Color</label>
+                  <ColorPicker
+                    value={form.colorHex}
+                    onChange={(val) => setForm({ ...form, colorHex: val })}
+                    variant="popover"
+                    showText={false}
+                    allowCustom={false}
+                  />
+                </div>
+
+                {/* Avatar */}
+                <div className="form-group">
+                  <label className="label">Avatar (optional)</label>
+                  <div className="flex items-center gap-4 flex-wrap">
+                    {(editing?.avatarUrl || avatarFile) && (
+                      <img
+                        src={avatarFile ? URL.createObjectURL(avatarFile) : editing?.avatarUrl || ''}
+                        alt="Preview"
+                        className="avatar avatar-lg object-cover"
+                        style={{ border: `2px solid ${form.colorHex}` }}
+                      />
+                    )}
+                    <div className="file-input-wrapper flex-1">
+                      <label className="file-input-label">
+                        {avatarFile ? 'Change Avatar' : (editing?.avatarUrl ? 'Replace Avatar' : 'Choose Avatar')}
+                        <input
+                          type="file"
+                          accept="image/png,image/jpeg,image/webp"
+                          onChange={(e) => setAvatarFile(e.target.files?.[0] || null)}
+                        />
+                      </label>
+                      {avatarFile && <span className="file-input-name">{avatarFile.name}</span>}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 mt-8">
+            <div className="dialog-footer">
               <button className="btn btn-secondary" onClick={closeDialog}>
                 Cancel
               </button>

@@ -11,6 +11,19 @@ interface KioskTokenWithUrl {
   url: string;
 }
 
+const IconCheck = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="20 6 9 17 4 12" />
+  </svg>
+);
+
+const IconCopy = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+  </svg>
+);
+
 export default function KioskTokensAdmin() {
   const [tokens, setTokens] = useState<KioskToken[]>([]);
   const [loading, setLoading] = useState(true);
@@ -18,6 +31,7 @@ export default function KioskTokensAdmin() {
   const [open, setOpen] = useState(false);
   const [tokenName, setTokenName] = useState('');
   const [createdToken, setCreatedToken] = useState<KioskTokenWithUrl | null>(null);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   const load = async () => {
     try {
@@ -79,8 +93,14 @@ export default function KioskTokensAdmin() {
     }
   };
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
+  const copyToClipboard = async (text: string, key: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedKey(key);
+      setTimeout(() => setCopiedKey((k) => (k === key ? null : k)), 1500);
+    } catch {
+      setError('Failed to copy to clipboard');
+    }
   };
 
   return (
@@ -107,8 +127,8 @@ export default function KioskTokensAdmin() {
         </div>
       )}
 
-      {/* Tokens List */}
-      <div className="card overflow-hidden">
+      {/* Desktop Tokens List */}
+      <div className="admin-table-desktop card overflow-hidden">
         <table className="table">
           <thead>
             <tr>
@@ -154,7 +174,6 @@ export default function KioskTokensAdmin() {
                       <button
                         className="btn btn-secondary text-sm"
                         onClick={() => revokeToken(token.id, token.name)}
-                        style={{ minHeight: '36px' }}
                       >
                         Revoke
                       </button>
@@ -175,6 +194,50 @@ export default function KioskTokensAdmin() {
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile Tokens Cards */}
+      <div className="admin-cards-mobile">
+        {tokens.map((token) => (
+          <div key={token.id} className="admin-card-row">
+            <div className="admin-card-row-header">
+              <div className="flex-1 min-w-0">
+                <div style={{ color: 'var(--color-text)', fontWeight: 600 }} className="truncate">
+                  {token.name}
+                </div>
+                <div style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)' }}>
+                  Created {new Date(token.createdAt).toLocaleDateString()}
+                </div>
+              </div>
+              {token.isActive ? (
+                <span className="px-2 py-1 rounded text-xs font-medium shrink-0" style={{ background: 'var(--color-success-muted)', color: 'var(--color-success)' }}>
+                  Active
+                </span>
+              ) : (
+                <span className="px-2 py-1 rounded text-xs font-medium shrink-0" style={{ background: 'var(--color-error-muted)', color: 'var(--color-error)' }}>
+                  Revoked
+                </span>
+              )}
+            </div>
+            {token.isActive && (
+              <div className="admin-card-row-actions">
+                <button
+                  className="btn btn-secondary flex-1"
+                  style={{ color: 'var(--color-error)', borderColor: 'var(--color-error)' }}
+                  onClick={() => revokeToken(token.id, token.name)}
+                >
+                  Revoke
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
+        {!loading && tokens.length === 0 && (
+          <div className="empty-state">
+            <div className="empty-state-icon">🔑</div>
+            <p>No kiosk tokens yet</p>
+          </div>
+        )}
       </div>
 
       {/* Create Token Dialog */}
@@ -216,42 +279,40 @@ export default function KioskTokensAdmin() {
                     </p>
                   </div>
 
-                  <div>
+                  <div className="form-group">
                     <label className="label">Kiosk URL</label>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        className="input flex-1"
-                        value={createdToken.url}
-                        readOnly
-                        style={{ fontFamily: 'monospace', fontSize: 'var(--text-sm)' }}
-                      />
-                      <button
-                        className="btn btn-secondary"
-                        onClick={() => copyToClipboard(createdToken.url!)}
-                      >
-                        Copy
-                      </button>
-                    </div>
+                    <input
+                      type="text"
+                      className="input"
+                      value={createdToken.url}
+                      readOnly
+                      onFocus={(e) => e.currentTarget.select()}
+                      style={{ fontFamily: 'monospace', fontSize: 'var(--text-sm)' }}
+                    />
+                    <button
+                      className="btn btn-secondary w-full"
+                      onClick={() => copyToClipboard(createdToken.url!, 'url')}
+                    >
+                      {copiedKey === 'url' ? <><IconCheck /> Copied!</> : <><IconCopy /> Copy URL</>}
+                    </button>
                   </div>
 
-                  <div>
+                  <div className="form-group">
                     <label className="label">Token</label>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        className="input flex-1"
-                        value={createdToken.token}
-                        readOnly
-                        style={{ fontFamily: 'monospace', fontSize: 'var(--text-sm)' }}
-                      />
-                      <button
-                        className="btn btn-secondary"
-                        onClick={() => copyToClipboard(createdToken.token!)}
-                      >
-                        Copy
-                      </button>
-                    </div>
+                    <input
+                      type="text"
+                      className="input"
+                      value={createdToken.token}
+                      readOnly
+                      onFocus={(e) => e.currentTarget.select()}
+                      style={{ fontFamily: 'monospace', fontSize: 'var(--text-sm)' }}
+                    />
+                    <button
+                      className="btn btn-secondary w-full"
+                      onClick={() => copyToClipboard(createdToken.token!, 'token')}
+                    >
+                      {copiedKey === 'token' ? <><IconCheck /> Copied!</> : <><IconCopy /> Copy Token</>}
+                    </button>
                   </div>
                 </div>
               )}

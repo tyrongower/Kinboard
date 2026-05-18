@@ -46,6 +46,18 @@ const IconGripVertical = () => (
   </svg>
 );
 
+const IconChevronUp = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="18 15 12 9 6 15" />
+  </svg>
+);
+
+const IconChevronDown = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="6 9 12 15 18 9" />
+  </svg>
+);
+
 function formatDateInput(d?: string) {
   if (!d) return '';
   // Parse the ISO date string and format as YYYY-MM-DD in local timezone
@@ -351,6 +363,20 @@ export default function JobsAdmin() {
     }
   };
 
+  const moveJob = async (index: number, direction: -1 | 1) => {
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= jobs.length) return;
+    const reordered = [...jobs];
+    [reordered[index], reordered[newIndex]] = [reordered[newIndex], reordered[index]];
+    setJobs(reordered);
+    try {
+      await jobApi.updateOrder(reordered.map((j) => j.id));
+    } catch (e: any) {
+      setError(e?.message || 'Failed to update order');
+      await load();
+    }
+  };
+
   // Get users not already assigned
   const availableUsers = users.filter(u => 
     !form.assignments?.some(a => a.userId === u.id) || 
@@ -359,8 +385,8 @@ export default function JobsAdmin() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-4">
-        <div>
+      <div className="section-header" style={{ marginBottom: 0 }}>
+        <div className="min-w-0">
           <h2 className="text-xl font-semibold" style={{ color: 'var(--color-text)' }}>
             Jobs
           </h2>
@@ -370,7 +396,7 @@ export default function JobsAdmin() {
         </div>
         <button className="btn btn-primary" onClick={openCreate}>
           <IconPlus />
-          New Job
+          <span>New Job</span>
         </button>
       </div>
 
@@ -384,7 +410,8 @@ export default function JobsAdmin() {
         </div>
       )}
 
-      <div className="overflow-auto">
+      {/* Desktop table */}
+      <div className="admin-table-desktop overflow-auto card">
         <table className="table">
           <thead>
             <tr>
@@ -396,7 +423,7 @@ export default function JobsAdmin() {
             </tr>
           </thead>
           <tbody>
-            {jobs.map((c) => (
+            {jobs.map((c, idx) => (
               <tr
                 key={c.id}
                 draggable
@@ -408,8 +435,18 @@ export default function JobsAdmin() {
                   background: draggingId === c.id ? 'var(--color-surface)' : undefined,
                 }}
               >
-                <td className="p-2 cursor-grab" style={{ color: 'var(--color-text-muted)' }}>
-                  <IconGripVertical />
+                <td className="p-2" style={{ color: 'var(--color-text-muted)' }}>
+                  <div className="flex items-center gap-1">
+                    <span className="drag-handle"><IconGripVertical /></span>
+                    <div className="reorder-btns">
+                      <button className="icon-btn" onClick={() => moveJob(idx, -1)} disabled={idx === 0} aria-label="Move up">
+                        <IconChevronUp />
+                      </button>
+                      <button className="icon-btn" onClick={() => moveJob(idx, 1)} disabled={idx === jobs.length - 1} aria-label="Move down">
+                        <IconChevronDown />
+                      </button>
+                    </div>
+                  </div>
                 </td>
                 <td>
                   <div className="flex flex-col gap-1">
@@ -477,6 +514,82 @@ export default function JobsAdmin() {
         </table>
       </div>
 
+      {/* Mobile cards */}
+      <div className="admin-cards-mobile">
+        {jobs.map((c, idx) => (
+          <div key={c.id} className="admin-card-row">
+            <div className="admin-card-row-header">
+              <div className="flex-1 min-w-0">
+                <div style={{ color: 'var(--color-text)', fontWeight: 600 }}>{c.title}</div>
+                {c.description && (
+                  <div style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)' }}>
+                    {c.description}
+                  </div>
+                )}
+              </div>
+              <div className="reorder-btns shrink-0">
+                <button className="icon-btn" onClick={() => moveJob(idx, -1)} disabled={idx === 0} aria-label="Move up">
+                  <IconChevronUp />
+                </button>
+                <button className="icon-btn" onClick={() => moveJob(idx, 1)} disabled={idx === jobs.length - 1} aria-label="Move down">
+                  <IconChevronDown />
+                </button>
+              </div>
+            </div>
+
+            <dl className="admin-card-row-meta">
+              <dt>Assigned</dt>
+              <dd>
+                {(c.assignments?.length || 0) > 0 ? (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {c.assignments?.slice(0, 5).map((a) => (
+                      <span
+                        key={a.id}
+                        className="avatar avatar-sm"
+                        title={a.user?.displayName || ''}
+                        style={{ background: a.user?.colorHex || '#777', color: 'white' }}
+                      >
+                        {a.user?.displayName?.charAt(0) || '?'}
+                      </span>
+                    ))}
+                    {(c.assignments?.length || 0) > 5 && (
+                      <span style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)' }}>
+                        +{(c.assignments?.length || 0) - 5}
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <span style={{ color: 'var(--color-text-muted)' }}>Unassigned</span>
+                )}
+              </dd>
+              <dt>Recurrence</dt>
+              <dd>{c.recurrence || '—'}</dd>
+            </dl>
+
+            <div className="admin-card-row-actions">
+              <button className="btn btn-secondary flex-1" onClick={() => openEdit(c)}>
+                <IconEdit />
+                Edit
+              </button>
+              <button
+                className="btn btn-secondary"
+                style={{ color: 'var(--color-error)', borderColor: 'var(--color-error)' }}
+                onClick={() => remove(c)}
+                aria-label={`Delete ${c.title}`}
+              >
+                <IconTrash />
+              </button>
+            </div>
+          </div>
+        ))}
+        {!loading && jobs.length === 0 && (
+          <div className="empty-state">
+            <div className="empty-state-icon">✓</div>
+            <p>No jobs yet</p>
+          </div>
+        )}
+      </div>
+
       {/* Job Dialog */}
       {open && (
         <div className="dialog-overlay" onClick={closeDialog}>
@@ -521,7 +634,7 @@ export default function JobsAdmin() {
                       />
                       <button
                         className="btn btn-secondary text-sm"
-                        style={{ minHeight: '36px', color: 'var(--color-error)', borderColor: 'var(--color-error)' }}
+                        style={{ color: 'var(--color-error)', borderColor: 'var(--color-error)' }}
                         onClick={async () => {
                           try {
                             await jobApi.deleteImage(editing.id);
@@ -536,11 +649,17 @@ export default function JobsAdmin() {
                       </button>
                     </div>
                   )}
-                  <input
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp"
-                    onChange={(e) => setImageFile(e.target.files?.[0] || null)}
-                  />
+                  <div className="file-input-wrapper">
+                    <label className="file-input-label">
+                      {imageFile ? 'Change Image' : 'Choose Image'}
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp"
+                        onChange={(e) => setImageFile(e.target.files?.[0] || null)}
+                      />
+                    </label>
+                    {imageFile && <span className="file-input-name">{imageFile.name}</span>}
+                  </div>
                   <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>
                     Max 5 MB. PNG/JPG/WebP.
                   </p>
@@ -552,7 +671,7 @@ export default function JobsAdmin() {
                     <label className="label" style={{ marginBottom: 0 }}>
                       Recurrence
                     </label>
-                    <button className="btn btn-secondary text-sm" style={{ minHeight: '36px' }} onClick={openRecurrence}>
+                    <button className="btn btn-secondary text-sm" onClick={openRecurrence}>
                       Edit Recurrence
                     </button>
                   </div>
@@ -585,7 +704,6 @@ export default function JobsAdmin() {
                     </label>
                     <button
                       className="btn btn-secondary text-sm"
-                      style={{ minHeight: '36px' }}
                       onClick={openAddAssignment}
                       disabled={availableUsers.length === 0}
                     >
@@ -737,7 +855,6 @@ export default function JobsAdmin() {
                       </label>
                       <button
                         className="btn btn-secondary text-sm"
-                        style={{ minHeight: '36px' }}
                         onClick={() => setAssignmentRecurrenceOpen(true)}
                       >
                         Edit

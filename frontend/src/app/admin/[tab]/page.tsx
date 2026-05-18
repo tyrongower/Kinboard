@@ -61,7 +61,7 @@ export default function AdminTabbedPage() {
   return (
     <div className="min-h-screen flex flex-col w-full overflow-x-hidden" style={{ background: 'var(--color-bg)' }}>
       <header
-        className="hidden min-[1450px]:flex flex-wrap items-center gap-3 sm:gap-4 px-4 sm:px-6 py-3 sm:py-4 border-b justify-between"
+        className="hidden lg:flex flex-wrap items-center gap-3 sm:gap-4 px-4 sm:px-6 py-3 sm:py-4 border-b justify-between"
         style={{
           background: 'var(--color-bg-elevated)',
           borderColor: 'var(--color-divider)'
@@ -91,7 +91,7 @@ export default function AdminTabbedPage() {
               }`}
             >
               <span className="text-lg">{tab.icon}</span>
-              <span className="hidden sm:inline">{tab.label}</span>
+              <span className="hidden xl:inline">{tab.label}</span>
             </button>
           ))}
         </nav>
@@ -106,36 +106,44 @@ export default function AdminTabbedPage() {
       </header>
 
       <header
-        className="flex min-[1450px]:hidden items-center justify-between gap-3 px-4 py-3 border-b"
+        className="flex lg:hidden flex-col gap-2 px-3 py-3 border-b"
         style={{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-divider)' }}
       >
-        <div className="flex items-center gap-3 shrink-0">
-          <div className="w-10 h-10">
-            <img src="/logo.svg" alt="Kinboard Logo" className="w-full h-full" />
+       <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="w-9 h-9">
+              <img src="/logo.svg" alt="Kinboard Logo" className="w-full h-full" />
+            </div>
+            <span className="font-semibold text-base" style={{ color: 'var(--color-text)' }}>Kinboard</span>
           </div>
-          <span className="hidden sm:block font-semibold" style={{ color: 'var(--color-text)' }}>Kinboard</span>
+
+          <button
+            className="rounded-lg"
+            style={{ width: 'var(--touch-target)', height: 'var(--touch-target)' }}
+            aria-label="Open menu"
+            onClick={() => setIsMenuOpen(true)}
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--color-text)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="18" x2="21" y2="18" />
+            </svg>
+          </button>
         </div>
 
-        <div className="flex-1 min-w-0 text-center">
-          <div className="flex items-center justify-center gap-2 truncate">
-            <span className="text-base font-medium truncate" style={{ color: 'var(--color-text)' }}>
-              {tabs[currentTabIndex]?.label}
-            </span>
-          </div>
-        </div>
-
-        <button
-          className="rounded-lg"
-          style={{ width: 'var(--touch-target-lg)', height: 'var(--touch-target-lg)' }}
-          aria-label="Open menu"
-          onClick={() => setIsMenuOpen(true)}
-        >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--color-text)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="3" y1="6" x2="21" y2="6" />
-            <line x1="3" y1="12" x2="21" y2="12" />
-            <line x1="3" y1="18" x2="21" y2="18" />
-          </svg>
-        </button>
+        <nav className="tab-list-scroll" aria-label="Admin sections">
+          {tabs.map((tab, index) => (
+            <button
+              key={tab.id}
+              onClick={() => handleTabChange(index)}
+              className={`tab flex items-center gap-2 ${currentTabIndex === index ? 'tab-active' : ''}`}
+              style={{ padding: '0.625rem 1rem' }}
+            >
+              <span className="text-lg" aria-hidden="true">{tab.icon}</span>
+              <span>{tab.label}</span>
+            </button>
+          ))}
+        </nav>
       </header>
 
       {isMenuOpen && (
@@ -148,7 +156,7 @@ export default function AdminTabbedPage() {
           <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.6)' }} onClick={() => setIsMenuOpen(false)} />
 
           <div
-            className="relative ml-auto mr-auto w-full max-w-200 rounded-b-2xl border shadow-lg animate-slide-up"
+            className="relative ml-auto mr-auto w-full max-w-xl rounded-b-2xl border shadow-lg animate-slide-up"
             style={{ background: 'var(--color-bg-elevated)', borderColor: 'var(--color-divider)' }}
           >
             <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'var(--color-divider)' }}>
@@ -206,7 +214,7 @@ export default function AdminTabbedPage() {
         </div>
       )}
 
-      <main className="flex-1 overflow-auto p-4 sm:p-6">
+      <main className="flex-1 overflow-auto p-3 sm:p-6">
         <div className="max-w-5xl mx-auto">
           {!adminEnabled ? (
             <div className="empty-state">

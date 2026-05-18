@@ -39,6 +39,18 @@ const IconGripVertical = () => (
   </svg>
 );
 
+const IconChevronUp = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="18 15 12 9 6 15" />
+  </svg>
+);
+
+const IconChevronDown = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="6 9 12 15 18 9" />
+  </svg>
+);
+
 export default function UsersAdmin() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -147,6 +159,20 @@ export default function UsersAdmin() {
     }
   };
 
+  const moveUser = async (index: number, direction: -1 | 1) => {
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= users.length) return;
+    const reordered = [...users];
+    [reordered[index], reordered[newIndex]] = [reordered[newIndex], reordered[index]];
+    setUsers(reordered);
+    try {
+      await userApi.updateOrder(reordered.map((u) => u.id));
+    } catch (e: any) {
+      setError(e?.message || 'Failed to update order');
+      await load();
+    }
+  };
+
   const remove = async (u: User) => {
     if (!confirm(`Delete user ${u.displayName}?`)) return;
     try {
@@ -178,12 +204,12 @@ export default function UsersAdmin() {
         </div>
       )}
 
-      {/* Users Table */}
-      <div className="card overflow-hidden">
+      {/* Desktop Users Table */}
+      <div className="admin-table-desktop card overflow-hidden">
         <table className="table">
           <thead>
             <tr>
-              <th style={{ width: 48 }}></th>
+              <th style={{ width: 96 }}></th>
               <th>Display Name</th>
               <th>Email</th>
               <th>Role</th>
@@ -192,7 +218,7 @@ export default function UsersAdmin() {
             </tr>
           </thead>
           <tbody>
-            {users.map((u) => (
+            {users.map((u, idx) => (
               <tr
                 key={u.id}
                 draggable
@@ -202,9 +228,17 @@ export default function UsersAdmin() {
                 style={{ opacity: draggingId === u.id ? 0.5 : 1 }}
               >
                 <td>
-                  <span className="drag-handle">
-                    <IconGripVertical />
-                  </span>
+                  <div className="flex items-center gap-1">
+                    <span className="drag-handle"><IconGripVertical /></span>
+                    <div className="reorder-btns">
+                      <button className="icon-btn" onClick={() => moveUser(idx, -1)} disabled={idx === 0} aria-label="Move up">
+                        <IconChevronUp />
+                      </button>
+                      <button className="icon-btn" onClick={() => moveUser(idx, 1)} disabled={idx === users.length - 1} aria-label="Move down">
+                        <IconChevronDown />
+                      </button>
+                    </div>
+                  </div>
                 </td>
                 <td>
                   <div className="flex items-center gap-3">
@@ -213,6 +247,7 @@ export default function UsersAdmin() {
                         src={u.avatarUrl}
                         alt={u.displayName}
                         className="w-8 h-8 rounded-full object-cover"
+                        loading="lazy"
                       />
                     ) : (
                       <div
@@ -282,6 +317,85 @@ export default function UsersAdmin() {
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile Users Cards */}
+      <div className="admin-cards-mobile">
+        {users.map((u, idx) => (
+          <div key={u.id} className="admin-card-row">
+            <div className="admin-card-row-header">
+              {u.avatarUrl ? (
+                <img
+                  src={u.avatarUrl}
+                  alt={u.displayName}
+                  className="w-10 h-10 rounded-full object-cover shrink-0"
+                  loading="lazy"
+                />
+              ) : (
+                <div
+                  className="avatar avatar-md shrink-0"
+                  style={{ background: u.colorHex, color: 'white' }}
+                >
+                  {u.displayName.charAt(0)}
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <div style={{ color: 'var(--color-text)', fontWeight: 600 }} className="truncate">
+                  {u.displayName}
+                </div>
+                <div style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)' }} className="truncate">
+                  {u.email || 'No email'}
+                </div>
+              </div>
+              <div className="reorder-btns shrink-0">
+                <button className="icon-btn" onClick={() => moveUser(idx, -1)} disabled={idx === 0} aria-label="Move up">
+                  <IconChevronUp />
+                </button>
+                <button className="icon-btn" onClick={() => moveUser(idx, 1)} disabled={idx === users.length - 1} aria-label="Move down">
+                  <IconChevronDown />
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              {u.isAdmin && (
+                <span className="px-2 py-1 rounded text-xs font-medium" style={{ background: 'var(--color-primary-muted)', color: 'var(--color-primary)' }}>
+                  Admin
+                </span>
+              )}
+              {u.hideFromKiosk && (
+                <span className="px-2 py-1 rounded text-xs font-medium" style={{ background: 'var(--color-warning-muted)', color: 'var(--color-warning)' }}>
+                  Hidden from kiosk
+                </span>
+              )}
+              <span className="flex items-center gap-1 px-2 py-1 rounded text-xs" style={{ background: 'var(--color-surface)', color: 'var(--color-text-secondary)' }}>
+                <span className="color-swatch" style={{ width: 12, height: 12, borderWidth: 1 }} />
+                {u.colorHex}
+              </span>
+            </div>
+
+            <div className="admin-card-row-actions">
+              <button className="btn btn-secondary flex-1" onClick={() => openEdit(u)}>
+                <IconEdit />
+                Edit
+              </button>
+              <button
+                className="btn btn-secondary"
+                style={{ color: 'var(--color-error)', borderColor: 'var(--color-error)' }}
+                onClick={() => remove(u)}
+                aria-label={`Delete ${u.displayName}`}
+              >
+                <IconTrash />
+              </button>
+            </div>
+          </div>
+        ))}
+        {!loading && users.length === 0 && (
+          <div className="empty-state">
+            <div className="empty-state-icon">👥</div>
+            <p>No users yet</p>
+          </div>
+        )}
       </div>
 
       {/* Dialog */}
@@ -399,47 +513,51 @@ export default function UsersAdmin() {
                   )}
                 </div>
 
-                {/* Avatar (only when editing) */}
-                {editing && (
-                  <div className="form-group">
-                    <label className="label">Avatar</label>
-                    {editing.avatarUrl && (
-                      <div className="flex items-center gap-4 mb-3">
-                        <img
-                          src={editing.avatarUrl}
-                          alt="avatar"
-                          className="w-16 h-16 rounded-full object-cover"
-                        />
-                        <button
-                          className="btn btn-secondary text-sm"
-                          style={{
-                            minHeight: '36px',
-                            color: 'var(--color-error)',
-                            borderColor: 'var(--color-error)'
-                          }}
-                          onClick={async () => {
-                            try {
-                              await userApi.deleteAvatar(editing.id);
-                              setUsers((prev) => prev.map((x) => (x.id === editing.id ? { ...x, avatarUrl: null } : x)));
-                              setEditing({ ...editing, avatarUrl: null });
-                            } catch (e: any) {
-                              setError(e?.message || 'Failed to delete avatar');
-                            }
-                          }}
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    )}
-                    <input
-                      type="file"
-                      accept="image/png,image/jpeg,image/webp"
-                      onChange={(e) => setAvatarFile(e.target.files?.[0] || null)}
-                      className="input"
-                      style={{ padding: '0.5rem' }}
-                    />
+                {/* Avatar */}
+                <div className="form-group">
+                  <label className="label">Avatar</label>
+                  {editing?.avatarUrl && !avatarFile && (
+                    <div className="flex items-center gap-4 mb-3">
+                      <img
+                        src={editing.avatarUrl}
+                        alt="avatar"
+                        className="w-16 h-16 rounded-full object-cover"
+                      />
+                      <button
+                        className="btn btn-secondary text-sm"
+                        style={{
+                          color: 'var(--color-error)',
+                          borderColor: 'var(--color-error)'
+                        }}
+                        onClick={async () => {
+                          try {
+                            await userApi.deleteAvatar(editing.id);
+                            setUsers((prev) => prev.map((x) => (x.id === editing.id ? { ...x, avatarUrl: null } : x)));
+                            setEditing({ ...editing, avatarUrl: null });
+                          } catch (e: any) {
+                            setError(e?.message || 'Failed to delete avatar');
+                          }
+                        }}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  )}
+                  <div className="file-input-wrapper">
+                    <label className="file-input-label">
+                      {avatarFile ? 'Change Avatar' : (editing?.avatarUrl ? 'Replace Avatar' : 'Choose Avatar')}
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp"
+                        onChange={(e) => setAvatarFile(e.target.files?.[0] || null)}
+                      />
+                    </label>
+                    {avatarFile && <span className="file-input-name">{avatarFile.name}</span>}
                   </div>
-                )}
+                  <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>
+                    Max 5 MB. PNG/JPG/WebP.
+                  </p>
+                </div>
               </div>
             </div>
             <div className="dialog-footer">

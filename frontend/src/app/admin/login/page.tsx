@@ -82,7 +82,7 @@ export default function AdminLoginPage() {
 
       {/* Login Form */}
       <div
-        className="card-elevated w-full max-w-md p-8"
+        className="card-elevated w-full max-w-md p-6 sm:p-8"
       >
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>

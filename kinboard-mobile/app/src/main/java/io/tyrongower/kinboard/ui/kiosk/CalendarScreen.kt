@@ -494,10 +494,18 @@ private fun formatEventTime(event: CalendarEventItem): String {
         "All day"
     } else {
         val formatter = DateTimeFormatter.ofPattern("h:mm a")
-        val start = java.time.LocalDateTime.parse(event.start, DateTimeFormatter.ISO_DATE_TIME)
-        val end = java.time.LocalDateTime.parse(event.end, DateTimeFormatter.ISO_DATE_TIME)
+        val start = parseServerInstant(event.start)
+        val end = parseServerInstant(event.end)
         "${start.format(formatter)} – ${end.format(formatter)}"
     }
+}
+
+// Backend emits UTC times with a 'Z' suffix for timed events, and naked local-date-time
+// for all-day events. Parse as Instant when zoned, otherwise as LocalDateTime.
+private fun parseServerInstant(value: String): java.time.LocalDateTime = try {
+    java.time.Instant.parse(value).atZone(java.time.ZoneId.systemDefault()).toLocalDateTime()
+} catch (e: java.time.format.DateTimeParseException) {
+    java.time.LocalDateTime.parse(value)
 }
 
 // Placeholder for WeekView - will implement in next file

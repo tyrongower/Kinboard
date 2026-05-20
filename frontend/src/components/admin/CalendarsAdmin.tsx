@@ -1,6 +1,6 @@
-﻿'use client';
+'use client';
 
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { CalendarSource, calendarsApi } from '@/lib/api';
 import ColorPicker from '@/components/shared/ColorPicker';
 
@@ -38,18 +38,32 @@ const IconGripVertical = () => (
   </svg>
 );
 
+const IconFilter = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+  </svg>
+);
+
+function hasActiveFilters(s: CalendarSource): boolean {
+  return !!(s.titleIncludes || s.titleExcludes || s.categoryIncludes || s.categoryExcludes);
+}
+
 export default function CalendarsAdmin() {
   const [items, setItems] = useState<CalendarSource[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [newItem, setNewItem] = useState<Omit<CalendarSource, 'id' | 'displayOrder'>>({ 
-    name: '', 
-    icalUrl: '', 
-    colorHex: '#60a5fa', 
-    enabled: true 
+  const [newItem, setNewItem] = useState<Omit<CalendarSource, 'id' | 'displayOrder'>>({
+    name: '',
+    icalUrl: '',
+    colorHex: '#60a5fa',
+    enabled: true,
+    titleIncludes: '',
+    titleExcludes: '',
+    categoryIncludes: '',
+    categoryExcludes: '',
   });
-  // drag & drop state
   const [draggingId, setDraggingId] = useState<number | null>(null);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
 
   useEffect(() => {
     load();
@@ -68,7 +82,6 @@ export default function CalendarsAdmin() {
     }
   };
 
-  // drag & drop helpers
   const onDragStart = (id: number) => () => setDraggingId(id);
   const onDragOverItem = (overId: number) => (e: React.DragEvent) => {
     e.preventDefault();
@@ -105,6 +118,7 @@ export default function CalendarsAdmin() {
     try {
       await calendarsApi.delete(id);
       setItems(items.filter(i => i.id !== id));
+      if (expandedId === id) setExpandedId(null);
     } catch (e: any) {
       setError(e?.message || 'Failed to delete calendar');
     }
@@ -115,10 +129,23 @@ export default function CalendarsAdmin() {
     try {
       const created = await calendarsApi.create(newItem);
       setItems([...items, created]);
-      setNewItem({ name: '', icalUrl: '', colorHex: '#60a5fa', enabled: true });
+      setNewItem({
+        name: '',
+        icalUrl: '',
+        colorHex: '#60a5fa',
+        enabled: true,
+        titleIncludes: '',
+        titleExcludes: '',
+        categoryIncludes: '',
+        categoryExcludes: '',
+      });
     } catch (e: any) {
       setError(e?.message || 'Failed to add calendar');
     }
+  };
+
+  const updateField = (id: number, patch: Partial<CalendarSource>) => {
+    setItems(arr => arr.map(a => a.id === id ? { ...a, ...patch } : a));
   };
 
   if (loading) {
@@ -131,14 +158,12 @@ export default function CalendarsAdmin() {
 
   return (
     <div>
-      {/* Section Header */}
       <div className="section-header">
         <h2 className="section-title">Calendars</h2>
       </div>
 
-      {/* Error Message */}
       {error && (
-        <div 
+        <div
           className="mb-4 p-3 rounded-lg"
           style={{ background: 'var(--color-error-muted)', color: 'var(--color-error)' }}
         >
@@ -146,7 +171,6 @@ export default function CalendarsAdmin() {
         </div>
       )}
 
-      {/* Calendars Table */}
       <div className="card overflow-hidden">
         <table className="table">
           <thead>
@@ -156,84 +180,136 @@ export default function CalendarsAdmin() {
               <th>iCal URL</th>
               <th style={{ width: 80 }}>Color</th>
               <th style={{ width: 80, textAlign: 'center' }}>Enabled</th>
-              <th style={{ width: 100, textAlign: 'right' }}>Actions</th>
+              <th style={{ width: 140, textAlign: 'right' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {items.map((it) => (
-              <tr
-                key={it.id}
-                draggable
-                onDragStart={onDragStart(it.id)}
-                onDragOver={onDragOverItem(it.id)}
-                onDrop={onDropList}
-                style={{ opacity: draggingId === it.id ? 0.5 : 1 }}
-              >
-                <td>
-                  <span className="drag-handle">
-                    <IconGripVertical />
-                  </span>
-                </td>
-                <td>
-                  <input
-                    type="text"
-                    className="input input-sm"
-                    value={it.name}
-                    onChange={e => setItems(arr => arr.map(a => a.id === it.id ? { ...a, name: e.target.value } : a))}
-                    placeholder="Calendar name"
-                  />
-                </td>
-                <td>
-                  <input
-                    type="text"
-                    className="input input-sm"
-                    value={it.icalUrl}
-                    onChange={e => setItems(arr => arr.map(a => a.id === it.id ? { ...a, icalUrl: e.target.value } : a))}
-                    placeholder="https://..."
-                  />
-                </td>
-                <td>
-                  <div className="flex items-center gap-2">
-                    <ColorPicker
-                      value={it.colorHex}
-                      onChange={(val) => setItems(arr => arr.map(a => a.id === it.id ? { ...a, colorHex: val } : a))}
-                      showText={false}
-                      allowCustom={false}
-                      variant="popover"
-                    />
-                  </div>
-                </td>
-                <td style={{ textAlign: 'center' }}>
-                  <button
-                    className={`switch ${it.enabled ? 'switch-checked' : ''}`}
-                    onClick={() => setItems(arr => arr.map(a => a.id === it.id ? { ...a, enabled: !a.enabled } : a))}
-                    role="switch"
-                    aria-checked={it.enabled}
+            {items.map((it) => {
+              const isExpanded = expandedId === it.id;
+              const filtersActive = hasActiveFilters(it);
+              return (
+                <Fragment key={it.id}>
+                  <tr
+                    draggable
+                    onDragStart={onDragStart(it.id)}
+                    onDragOver={onDragOverItem(it.id)}
+                    onDrop={onDropList}
+                    style={{ opacity: draggingId === it.id ? 0.5 : 1 }}
                   >
-                    <span className="switch-thumb" />
-                  </button>
-                </td>
-                <td>
-                  <div className="flex items-center justify-end gap-1">
-                    <button 
-                      className="icon-btn icon-btn-sm" 
-                      onClick={() => saveItem(it)}
-                      aria-label="Save"
-                      title="Save changes"
-                    >
-                      <IconSave />
-                    </button>
-                    <button 
-                      className="icon-btn icon-btn-sm icon-btn-danger" 
-                      onClick={() => removeItem(it.id)}
-                      aria-label="Delete"
-                    >
-                      <IconTrash />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+                    <td>
+                      <span className="drag-handle">
+                        <IconGripVertical />
+                      </span>
+                    </td>
+                    <td>
+                      <input
+                        type="text"
+                        className="input input-sm"
+                        value={it.name}
+                        onChange={e => updateField(it.id, { name: e.target.value })}
+                        placeholder="Calendar name"
+                      />
+                    </td>
+                    <td>
+                      <input
+                        type="text"
+                        className="input input-sm"
+                        value={it.icalUrl}
+                        onChange={e => updateField(it.id, { icalUrl: e.target.value })}
+                        placeholder="https://..."
+                      />
+                    </td>
+                    <td>
+                      <div className="flex items-center gap-2">
+                        <ColorPicker
+                          value={it.colorHex}
+                          onChange={(val) => updateField(it.id, { colorHex: val })}
+                          showText={false}
+                          allowCustom={false}
+                          variant="popover"
+                        />
+                      </div>
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      <button
+                        className={`switch ${it.enabled ? 'switch-checked' : ''}`}
+                        onClick={() => updateField(it.id, { enabled: !it.enabled })}
+                        role="switch"
+                        aria-checked={it.enabled}
+                      >
+                        <span className="switch-thumb" />
+                      </button>
+                    </td>
+                    <td>
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          className="icon-btn icon-btn-sm"
+                          onClick={() => setExpandedId(isExpanded ? null : it.id)}
+                          aria-label={isExpanded ? 'Hide filters' : 'Show filters'}
+                          title={filtersActive ? 'Filters active' : 'Configure filters'}
+                          style={{ color: filtersActive ? 'var(--color-primary)' : undefined }}
+                        >
+                          <IconFilter />
+                        </button>
+                        <button
+                          className="icon-btn icon-btn-sm"
+                          onClick={() => saveItem(it)}
+                          aria-label="Save"
+                          title="Save changes"
+                        >
+                          <IconSave />
+                        </button>
+                        <button
+                          className="icon-btn icon-btn-sm icon-btn-danger"
+                          onClick={() => removeItem(it.id)}
+                          aria-label="Delete"
+                        >
+                          <IconTrash />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                  {isExpanded && (
+                    <tr>
+                      <td colSpan={6} style={{ background: 'var(--color-bg-subtle)' }}>
+                        <div className="p-4 grid gap-3" style={{ gridTemplateColumns: '1fr 1fr' }}>
+                          <FilterField
+                            label="Title includes"
+                            hint="Comma-separated. Event kept only if title contains any. Empty = no filter."
+                            value={it.titleIncludes ?? ''}
+                            onChange={v => updateField(it.id, { titleIncludes: v })}
+                          />
+                          <FilterField
+                            label="Title excludes"
+                            hint="Comma-separated. Event dropped if title contains any."
+                            value={it.titleExcludes ?? ''}
+                            onChange={v => updateField(it.id, { titleExcludes: v })}
+                          />
+                          <FilterField
+                            label="Category includes"
+                            hint="Comma-separated. Matches ICS CATEGORIES exactly (case-insensitive)."
+                            value={it.categoryIncludes ?? ''}
+                            onChange={v => updateField(it.id, { categoryIncludes: v })}
+                          />
+                          <FilterField
+                            label="Category excludes"
+                            hint="Comma-separated. Event dropped if any category matches."
+                            value={it.categoryExcludes ?? ''}
+                            onChange={v => updateField(it.id, { categoryExcludes: v })}
+                          />
+                          <div style={{ gridColumn: '1 / -1' }} className="flex justify-end">
+                            <button className="btn btn-primary btn-sm" onClick={() => saveItem(it)}>
+                              <IconSave />
+                              <span>Save filters</span>
+                            </button>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              );
+            })}
             {items.length === 0 && (
               <tr>
                 <td colSpan={6}>
@@ -248,9 +324,8 @@ export default function CalendarsAdmin() {
         </table>
       </div>
 
-      {/* Add New Calendar */}
       <div className="mt-6">
-        <h3 
+        <h3
           className="text-lg font-medium mb-3"
           style={{ color: 'var(--color-text)' }}
         >
@@ -290,7 +365,7 @@ export default function CalendarsAdmin() {
             >
               <span className="switch-thumb" />
             </button>
-            <button 
+            <button
               className="btn btn-primary"
               onClick={addItem}
               disabled={!newItem.name || !newItem.icalUrl}
@@ -299,8 +374,37 @@ export default function CalendarsAdmin() {
               <span>Add</span>
             </button>
           </div>
+          <p className="text-xs mt-3" style={{ color: 'var(--color-text-muted)' }}>
+            Tip: after creating, click the filter icon on a row to configure title/category filters that apply to every client.
+          </p>
         </div>
       </div>
     </div>
+  );
+}
+
+function FilterField({
+  label,
+  hint,
+  value,
+  onChange,
+}: {
+  label: string;
+  hint: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <label className="flex flex-col gap-1">
+      <span className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>{label}</span>
+      <input
+        type="text"
+        className="input input-sm"
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder="e.g. Birthdays, Holidays"
+      />
+      <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{hint}</span>
+    </label>
   );
 }

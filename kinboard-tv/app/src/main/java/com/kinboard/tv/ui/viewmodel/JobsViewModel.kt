@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.kinboard.tv.data.api.ApiClient
+import com.kinboard.tv.data.model.CalendarEvent
 import com.kinboard.tv.data.model.Job
 import com.kinboard.tv.data.model.JobAssignment
 import com.kinboard.tv.data.model.User
@@ -31,7 +32,9 @@ data class JobsUiState(
     val focusedUserId: Int? = null, // null means focus first card
     val weather: WeatherData? = null,
     val isWeatherLoading: Boolean = false,
-    val currentTime: String = ""
+    val currentTime: String = "",
+    val calendarEvents: List<CalendarEvent> = emptyList(),
+    val isCalendarLoading: Boolean = false
 )
 
 class JobsViewModel(application: Application) : AndroidViewModel(application) {
@@ -99,10 +102,38 @@ class JobsViewModel(application: Application) : AndroidViewModel(application) {
                     isLoading = false,
                     errorMessage = null
                 )
+
+                loadCalendarEvents()
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     errorMessage = "Failed to load data: ${e.message}"
+                )
+            }
+        }
+    }
+
+    private fun loadCalendarEvents() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isCalendarLoading = true)
+            try {
+                val dateString = _uiState.value.selectedDate.toString()
+                val response = ApiClient.getApi(getApplication()).getCalendarEvents(dateString, dateString)
+                if (response.isSuccessful) {
+                    _uiState.value = _uiState.value.copy(
+                        calendarEvents = response.body() ?: emptyList(),
+                        isCalendarLoading = false
+                    )
+                } else {
+                    _uiState.value = _uiState.value.copy(
+                        calendarEvents = emptyList(),
+                        isCalendarLoading = false
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    calendarEvents = emptyList(),
+                    isCalendarLoading = false
                 )
             }
         }
@@ -157,7 +188,7 @@ class JobsViewModel(application: Application) : AndroidViewModel(application) {
                 result.add(
                     UserJobData(
                         user = user,
-                        jobs = userJobs.sortedBy { (_, assignment) -> assignment.displayOrder },
+                        jobs = userJobs,
                         completedCount = completedCount,
                         totalCount = userJobs.size
                     )
@@ -313,6 +344,13 @@ class JobsViewModel(application: Application) : AndroidViewModel(application) {
                 _uiState.value = _uiState.value.copy(
                     jobs = jobs,
                     userJobsData = userJobsData
+                )
+            }
+
+            val eventsResponse = ApiClient.getApi(getApplication()).getCalendarEvents(dateString, dateString)
+            if (eventsResponse.isSuccessful) {
+                _uiState.value = _uiState.value.copy(
+                    calendarEvents = eventsResponse.body() ?: emptyList()
                 )
             }
         } catch (e: Exception) {

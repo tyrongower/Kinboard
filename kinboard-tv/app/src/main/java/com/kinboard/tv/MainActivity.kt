@@ -82,6 +82,8 @@ fun KinboardTVApp() {
                 weather = jobsState.weather,
                 isWeatherLoading = jobsState.isWeatherLoading,
                 currentTime = jobsState.currentTime,
+                calendarEvents = jobsState.calendarEvents,
+                isCalendarLoading = jobsState.isCalendarLoading,
                 onPrevDay = jobsViewModel::goToPreviousDay,
                 onToday = jobsViewModel::goToToday,
                 onNextDay = jobsViewModel::goToNextDay,

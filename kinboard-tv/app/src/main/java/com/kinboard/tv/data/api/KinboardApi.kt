@@ -56,4 +56,12 @@ interface KinboardApi {
 
     @GET("api/weather")
     suspend fun getWeather(): Response<WeatherData>
+
+    // Calendar
+
+    @GET("api/calendar/events")
+    suspend fun getCalendarEvents(
+        @Query("start") start: String,  // YYYY-MM-DD
+        @Query("end") end: String       // YYYY-MM-DD
+    ): Response<List<CalendarEvent>>
 }

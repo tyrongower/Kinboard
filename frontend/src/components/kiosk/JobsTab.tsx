@@ -52,11 +52,12 @@ export default function JobsTab({ selectedDate }: JobsTabProps) {
     (async () => {
       try {
         const [data, setts] = await Promise.all([userApi.getAll(), siteSettingsApi.get()]);
-        setUsers(data);
+        const visible = data.filter((u) => !u.hideFromKiosk);
+        setUsers(visible);
         setSettings(setts);
         setHideCompletedByPerson((prev) => {
           const next = { ...prev };
-          for (const u of data) {
+          for (const u of visible) {
             const key = `id:${u.id}`;
             if (next[key] === undefined) {
               next[key] = u.hideCompletedInKiosk ?? true;

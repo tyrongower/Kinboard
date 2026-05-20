@@ -200,9 +200,26 @@ clone_or_update_repo() {
 # Build backend
 build_backend() {
     log_info "Building backend..."
+
+    # Preserve appsettings.Production.json if it exists in the build directory
+    local preserved_settings=""
+    if [[ -f "$BACKEND_BUILD_DIR/appsettings.Production.json" ]]; then
+        preserved_settings=$(mktemp)
+        cp "$BACKEND_BUILD_DIR/appsettings.Production.json" "$preserved_settings"
+        log_info "Preserved existing appsettings.Production.json"
+    fi
+
     cd "$INSTALL_DIR/backend/Kinboard.Api"
     dotnet restore --verbosity quiet
     dotnet publish -c Release -o "$BACKEND_BUILD_DIR" --verbosity quiet
+
+    # Restore appsettings.Production.json if it was preserved
+    if [[ -n "$preserved_settings" ]] && [[ -f "$preserved_settings" ]]; then
+        cp "$preserved_settings" "$BACKEND_BUILD_DIR/appsettings.Production.json"
+        rm -f "$preserved_settings"
+        log_info "Restored appsettings.Production.json"
+    fi
+
     log_success "Backend built"
 }
 

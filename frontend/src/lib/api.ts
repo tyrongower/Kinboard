@@ -601,6 +601,12 @@ export interface PerformanceMetricsParams {
   statusCodeMax?: number;
 }
 
+export const weatherApi = {
+  async get(): Promise<Response> {
+    return authFetch(`${API_URL}/api/weather`);
+  },
+};
+
 export const performanceApi = {
   async getMetrics(params?: PerformanceMetricsParams): Promise<PerformanceMetricsResponse> {
     const queryParams = new URLSearchParams();

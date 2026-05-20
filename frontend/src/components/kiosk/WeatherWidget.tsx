@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import { useState, useEffect } from 'react';
-import { siteSettingsApi, SiteSettings } from '@/lib/api';
+import { siteSettingsApi, weatherApi, SiteSettings } from '@/lib/api';
 
 interface ForecastItem {
   date: string;
@@ -73,14 +73,7 @@ export default function WeatherWidget() {
 
   const loadWeather = async (silent = false) => {
     try {
-      // Get access token from localStorage
-      const accessToken = localStorage.getItem('accessToken');
-      const headers: HeadersInit = {};
-      if (accessToken) {
-        headers['Authorization'] = `Bearer ${accessToken}`;
-      }
-
-      const response = await fetch(`/api/weather`, { headers });
+      const response = await weatherApi.get();
       if (!response.ok) {
         setWeather(null);
         const text = await response.text();

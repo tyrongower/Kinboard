@@ -1,4 +1,4 @@
-﻿package com.kinboard.tv.ui.screens
+package com.kinboard.tv.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -9,22 +9,26 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.unit.dp
-import androidx.tv.foundation.lazy.list.TvLazyRow
-import androidx.tv.foundation.lazy.list.items
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Text
+import com.kinboard.tv.data.model.CalendarEvent
 import com.kinboard.tv.data.model.Job
 import com.kinboard.tv.data.model.JobAssignment
 import com.kinboard.tv.data.model.User
 import com.kinboard.tv.data.model.WeatherData
 import com.kinboard.tv.ui.components.KinboardOutlinedButton
 import com.kinboard.tv.ui.components.PersonJobCard
+import com.kinboard.tv.ui.components.TodayCalendarCard
 import com.kinboard.tv.ui.components.UserJobData
 import com.kinboard.tv.ui.components.WeatherWidget
 import com.kinboard.tv.ui.theme.*
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+
+private const val PANEL_PERSON_ID = -100
+private const val PANEL_CALENDAR_ID = -101
+private val PERSON_CARD_WIDTH = 380.dp
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
@@ -38,6 +42,8 @@ fun JobsScreen(
     weather: WeatherData?,
     isWeatherLoading: Boolean,
     currentTime: String,
+    calendarEvents: List<CalendarEvent>,
+    isCalendarLoading: Boolean,
     onPrevDay: () -> Unit,
     onToday: () -> Unit,
     onNextDay: () -> Unit,
@@ -56,10 +62,8 @@ fun JobsScreen(
             .background(Background)
             .padding(Layout.screenPadding)
     ) {
-        Column(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            // Header Section
+        Column(modifier = Modifier.fillMaxSize()) {
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -67,7 +71,6 @@ fun JobsScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Title and Date
                 Column {
                     Text(
                         text = "Jobs",
@@ -82,35 +85,21 @@ fun JobsScreen(
                     )
                 }
 
-                // Weather Widget
                 WeatherWidget(
                     weather = weather,
                     isLoading = isWeatherLoading,
                     currentTime = currentTime
                 )
 
-                // Date Navigation Buttons
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(Layout.buttonGap)
-                ) {
-                    KinboardOutlinedButton(
-                        text = "Prev",
-                        onClick = onPrevDay
-                    )
-                    KinboardOutlinedButton(
-                        text = "Today",
-                        onClick = onToday
-                    )
-                    KinboardOutlinedButton(
-                        text = "Next",
-                        onClick = onNextDay
-                    )
+                Row(horizontalArrangement = Arrangement.spacedBy(Layout.buttonGap)) {
+                    KinboardOutlinedButton(text = "Prev", onClick = onPrevDay)
+                    KinboardOutlinedButton(text = "Today", onClick = onToday)
+                    KinboardOutlinedButton(text = "Next", onClick = onNextDay)
                 }
             }
 
-            // Content Area
             when {
-                isLoading -> {
+                isLoading && userJobsData.isEmpty() && calendarEvents.isEmpty() -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
@@ -128,68 +117,42 @@ fun JobsScreen(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
                                 text = errorMessage,
                                 style = KinboardTypography.titleMedium,
                                 color = Error
                             )
                             Spacer(modifier = Modifier.height(Spacing.lg))
-                            KinboardOutlinedButton(
-                                text = "Retry",
-                                onClick = onRetry
-                            )
+                            KinboardOutlinedButton(text = "Retry", onClick = onRetry)
                         }
-                    }
-                }
-
-                userJobsData.isEmpty() -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "No jobs for this date",
-                            style = KinboardTypography.titleMedium,
-                            color = OnSurfaceVariant
-                        )
                     }
                 }
 
                 else -> {
-                    // Create a stable key based on user IDs to detect when the user list changes
                     val userIds = remember(userJobsData) { userJobsData.map { it.user.id } }
-
-                    // Create FocusRequesters for each user card
                     val focusRequesters = remember(userIds) {
                         userIds.associateWith { FocusRequester() }
                     }
+                    val calendarFocusRequester = remember { FocusRequester() }
 
-                    // Determine which user should be focused (stored focusedUserId or first user)
-                    val targetUserId = focusedUserId ?: userJobsData.firstOrNull()?.user?.id
+                    val targetUserId = focusedUserId
+                        ?: userJobsData.firstOrNull()?.user?.id
 
-                    // Request focus on the target card only when user list changes (not on job data updates)
-                    LaunchedEffect(userIds, targetUserId) {
-                        if (targetUserId != null) {
-                            focusRequesters[targetUserId]?.requestFocus()
+                    LaunchedEffect(userIds, targetUserId, focusedUserId) {
+                        when {
+                            focusedUserId == PANEL_CALENDAR_ID -> calendarFocusRequester.requestFocus()
+                            targetUserId != null -> focusRequesters[targetUserId]?.requestFocus()
                         }
                     }
 
-                    // Person Cards - Horizontal Layout (4 cards across)
-                    // Using TvLazyRow for proper TV focus-based scrolling behavior
-                    TvLazyRow(
+                    Row(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(bottom = Spacing.sm),
-                        horizontalArrangement = Arrangement.spacedBy(Layout.cardGap),
-                        contentPadding = PaddingValues(horizontal = Layout.screenPadding)
+                        horizontalArrangement = Arrangement.spacedBy(Layout.cardGap)
                     ) {
-                        items(
-                            items = userJobsData,
-                            key = { it.user.id }
-                        ) { userJobData ->
+                        userJobsData.forEach { userJobData ->
                             val focusRequester = focusRequesters[userJobData.user.id]
                             PersonJobCard(
                                 userJobData = userJobData,
@@ -200,7 +163,7 @@ fun JobsScreen(
                                 },
                                 onFocused = { onFocusedUserChange(userJobData.user.id) },
                                 modifier = Modifier
-                                    .width(320.dp)
+                                    .width(PERSON_CARD_WIDTH)
                                     .fillMaxHeight()
                                     .then(
                                         if (focusRequester != null) Modifier.focusRequester(focusRequester)
@@ -208,6 +171,17 @@ fun JobsScreen(
                                     )
                             )
                         }
+
+                        TodayCalendarCard(
+                            events = calendarEvents,
+                            selectedDate = selectedDate,
+                            isLoading = isCalendarLoading,
+                            onFocused = { onFocusedUserChange(PANEL_CALENDAR_ID) },
+                            focusRequester = calendarFocusRequester,
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                        )
                     }
                 }
             }

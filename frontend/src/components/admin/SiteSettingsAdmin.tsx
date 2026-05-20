@@ -137,7 +137,7 @@ export default function SiteSettingsAdmin() {
             Refresh Intervals
           </h3>
           
-          <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+          <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))' }}>
             {/* Jobs Refresh */}
             <div className="form-group">
               <label className="label">Jobs Refresh</label>
@@ -206,7 +206,7 @@ export default function SiteSettingsAdmin() {
             Weather API
           </h3>
           
-          <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}>
+          <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))' }}>
             {/* API Key */}
             <div className="form-group">
               <label className="label">API Key</label>

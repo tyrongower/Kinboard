@@ -38,6 +38,18 @@ const IconGripVertical = () => (
   </svg>
 );
 
+const IconChevronUp = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="18 15 12 9 6 15" />
+  </svg>
+);
+
+const IconChevronDown = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="6 9 12 15 18 9" />
+  </svg>
+);
+
 export default function CalendarsAdmin() {
   const [items, setItems] = useState<CalendarSource[]>([]);
   const [loading, setLoading] = useState(true);
@@ -88,6 +100,20 @@ export default function CalendarsAdmin() {
       await calendarsApi.updateOrder(items.map((u) => u.id));
     } catch (e: any) {
       setError(e?.message || 'Failed to update order');
+    }
+  };
+
+  const moveItem = async (index: number, direction: -1 | 1) => {
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= items.length) return;
+    const reordered = [...items];
+    [reordered[index], reordered[newIndex]] = [reordered[newIndex], reordered[index]];
+    setItems(reordered);
+    try {
+      await calendarsApi.updateOrder(reordered.map((u) => u.id));
+    } catch (e: any) {
+      setError(e?.message || 'Failed to update order');
+      await load();
     }
   };
 
@@ -146,12 +172,12 @@ export default function CalendarsAdmin() {
         </div>
       )}
 
-      {/* Calendars Table */}
-      <div className="card overflow-hidden">
+      {/* Desktop Calendars Table */}
+      <div className="admin-table-desktop card overflow-hidden">
         <table className="table">
           <thead>
             <tr>
-              <th style={{ width: 48 }}></th>
+              <th style={{ width: 96 }}></th>
               <th style={{ width: '20%' }}>Name</th>
               <th>iCal URL</th>
               <th style={{ width: 80 }}>Color</th>
@@ -160,7 +186,7 @@ export default function CalendarsAdmin() {
             </tr>
           </thead>
           <tbody>
-            {items.map((it) => (
+            {items.map((it, idx) => (
               <tr
                 key={it.id}
                 draggable
@@ -170,9 +196,17 @@ export default function CalendarsAdmin() {
                 style={{ opacity: draggingId === it.id ? 0.5 : 1 }}
               >
                 <td>
-                  <span className="drag-handle">
-                    <IconGripVertical />
-                  </span>
+                  <div className="flex items-center gap-1">
+                    <span className="drag-handle"><IconGripVertical /></span>
+                    <div className="reorder-btns">
+                      <button className="icon-btn" onClick={() => moveItem(idx, -1)} disabled={idx === 0} aria-label="Move up">
+                        <IconChevronUp />
+                      </button>
+                      <button className="icon-btn" onClick={() => moveItem(idx, 1)} disabled={idx === items.length - 1} aria-label="Move down">
+                        <IconChevronDown />
+                      </button>
+                    </div>
+                  </div>
                 </td>
                 <td>
                   <input
@@ -185,7 +219,8 @@ export default function CalendarsAdmin() {
                 </td>
                 <td>
                   <input
-                    type="text"
+                    type="url"
+                    inputMode="url"
                     className="input input-sm"
                     value={it.icalUrl}
                     onChange={e => setItems(arr => arr.map(a => a.id === it.id ? { ...a, icalUrl: e.target.value } : a))}
@@ -215,16 +250,16 @@ export default function CalendarsAdmin() {
                 </td>
                 <td>
                   <div className="flex items-center justify-end gap-1">
-                    <button 
-                      className="icon-btn icon-btn-sm" 
+                    <button
+                      className="icon-btn icon-btn-sm"
                       onClick={() => saveItem(it)}
                       aria-label="Save"
                       title="Save changes"
                     >
                       <IconSave />
                     </button>
-                    <button 
-                      className="icon-btn icon-btn-sm icon-btn-danger" 
+                    <button
+                      className="icon-btn icon-btn-sm icon-btn-danger"
                       onClick={() => removeItem(it.id)}
                       aria-label="Delete"
                     >
@@ -248,31 +283,135 @@ export default function CalendarsAdmin() {
         </table>
       </div>
 
+      {/* Mobile Calendar Cards */}
+      <div className="admin-cards-mobile">
+        {items.map((it, idx) => (
+          <div key={it.id} className="admin-card-row">
+            <div className="admin-card-row-header">
+              <div className="color-swatch shrink-0" style={{ background: it.colorHex, width: 28, height: 28 }} />
+              <div className="flex-1 min-w-0">
+                <input
+                  type="text"
+                  className="input input-sm"
+                  value={it.name}
+                  onChange={e => setItems(arr => arr.map(a => a.id === it.id ? { ...a, name: e.target.value } : a))}
+                  placeholder="Calendar name"
+                />
+              </div>
+              <div className="reorder-btns shrink-0">
+                <button className="icon-btn" onClick={() => moveItem(idx, -1)} disabled={idx === 0} aria-label="Move up">
+                  <IconChevronUp />
+                </button>
+                <button className="icon-btn" onClick={() => moveItem(idx, 1)} disabled={idx === items.length - 1} aria-label="Move down">
+                  <IconChevronDown />
+                </button>
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label className="label" style={{ marginBottom: '0.25rem' }}>iCal URL</label>
+              <input
+                type="url"
+                inputMode="url"
+                className="input input-sm"
+                value={it.icalUrl}
+                onChange={e => setItems(arr => arr.map(a => a.id === it.id ? { ...a, icalUrl: e.target.value } : a))}
+                placeholder="https://..."
+              />
+            </div>
+
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <label className="flex items-center gap-2">
+                <button
+                  className={`switch ${it.enabled ? 'switch-checked' : ''}`}
+                  onClick={() => setItems(arr => arr.map(a => a.id === it.id ? { ...a, enabled: !a.enabled } : a))}
+                  role="switch"
+                  aria-checked={it.enabled}
+                >
+                  <span className="switch-thumb" />
+                </button>
+                <span style={{ color: 'var(--color-text)', fontSize: 'var(--text-sm)' }}>
+                  {it.enabled ? 'Enabled' : 'Disabled'}
+                </span>
+              </label>
+              <ColorPicker
+                value={it.colorHex}
+                onChange={(val) => setItems(arr => arr.map(a => a.id === it.id ? { ...a, colorHex: val } : a))}
+                showText={false}
+                allowCustom={false}
+                variant="popover"
+              />
+            </div>
+
+            <div className="admin-card-row-actions">
+              <button className="btn btn-primary flex-1" onClick={() => saveItem(it)}>
+                <IconSave />
+                Save
+              </button>
+              <button
+                className="btn btn-secondary"
+                style={{ color: 'var(--color-error)', borderColor: 'var(--color-error)' }}
+                onClick={() => removeItem(it.id)}
+                aria-label={`Delete ${it.name}`}
+              >
+                <IconTrash />
+              </button>
+            </div>
+          </div>
+        ))}
+        {items.length === 0 && (
+          <div className="empty-state">
+            <div className="empty-state-icon">📅</div>
+            <p>No calendars yet</p>
+          </div>
+        )}
+      </div>
+
       {/* Add New Calendar */}
       <div className="mt-6">
-        <h3 
+        <h3
           className="text-lg font-medium mb-3"
           style={{ color: 'var(--color-text)' }}
         >
           Add Calendar
         </h3>
         <div className="card p-4">
-          <div className="grid gap-4" style={{ gridTemplateColumns: '1fr 2fr auto auto auto' }}>
-            <input
-              type="text"
-              className="input"
-              value={newItem.name}
-              onChange={e => setNewItem({ ...newItem, name: e.target.value })}
-              placeholder="Calendar name"
-            />
-            <input
-              type="text"
-              className="input"
-              value={newItem.icalUrl}
-              onChange={e => setNewItem({ ...newItem, icalUrl: e.target.value })}
-              placeholder="iCal URL (https://...)"
-            />
-            <div className="flex items-center gap-2">
+          <div className="flex flex-col gap-3">
+            <div className="form-group">
+              <label className="label">Name</label>
+              <input
+                type="text"
+                className="input"
+                value={newItem.name}
+                onChange={e => setNewItem({ ...newItem, name: e.target.value })}
+                placeholder="Calendar name"
+              />
+            </div>
+            <div className="form-group">
+              <label className="label">iCal URL</label>
+              <input
+                type="url"
+                inputMode="url"
+                className="input"
+                value={newItem.icalUrl}
+                onChange={e => setNewItem({ ...newItem, icalUrl: e.target.value })}
+                placeholder="https://..."
+              />
+            </div>
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <label className="flex items-center gap-2">
+                <button
+                  className={`switch ${newItem.enabled ? 'switch-checked' : ''}`}
+                  onClick={() => setNewItem({ ...newItem, enabled: !newItem.enabled })}
+                  role="switch"
+                  aria-checked={newItem.enabled}
+                >
+                  <span className="switch-thumb" />
+                </button>
+                <span style={{ color: 'var(--color-text)', fontSize: 'var(--text-sm)' }}>
+                  {newItem.enabled ? 'Enabled' : 'Disabled'}
+                </span>
+              </label>
               <ColorPicker
                 value={newItem.colorHex}
                 onChange={(val) => setNewItem({ ...newItem, colorHex: val })}
@@ -282,21 +421,12 @@ export default function CalendarsAdmin() {
               />
             </div>
             <button
-              className={`switch ${newItem.enabled ? 'switch-checked' : ''}`}
-              onClick={() => setNewItem({ ...newItem, enabled: !newItem.enabled })}
-              role="switch"
-              aria-checked={newItem.enabled}
-              style={{ alignSelf: 'center' }}
-            >
-              <span className="switch-thumb" />
-            </button>
-            <button 
               className="btn btn-primary"
               onClick={addItem}
               disabled={!newItem.name || !newItem.icalUrl}
             >
               <IconPlus />
-              <span>Add</span>
+              <span>Add Calendar</span>
             </button>
           </div>
         </div>

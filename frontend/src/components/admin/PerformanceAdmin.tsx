@@ -303,9 +303,9 @@ export default function PerformanceAdmin() {
         </div>
       )}
 
-      {/* Detailed Table */}
+      {/* Detailed Table - Desktop */}
       {!loading && !error && data && data.endpoints.length > 0 && (
-        <div className="card overflow-hidden">
+        <div className="admin-table-desktop card overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
@@ -400,6 +400,51 @@ export default function PerformanceAdmin() {
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {/* Detailed List - Mobile */}
+      {!loading && !error && data && data.endpoints.length > 0 && (
+        <div className="admin-cards-mobile">
+          {data.endpoints.map((endpoint, index) => {
+            const methodColor =
+              endpoint.method === 'GET' ? '#10B981'
+              : endpoint.method === 'POST' ? '#3B82F6'
+              : endpoint.method === 'PUT' ? '#F59E0B'
+              : endpoint.method === 'DELETE' ? '#EF4444'
+              : '#6B7280';
+            return (
+              <div key={index} className="admin-card-row">
+                <div className="admin-card-row-header">
+                  <span
+                    className="px-2 py-1 rounded text-xs font-medium shrink-0"
+                    style={{ backgroundColor: `${methodColor}20`, color: methodColor }}
+                  >
+                    {endpoint.method}
+                  </span>
+                  <span className="font-mono text-sm min-w-0 break-all" style={{ color: 'var(--color-text)' }}>
+                    {endpoint.endpoint}
+                  </span>
+                </div>
+                <dl className="admin-card-row-meta">
+                  <dt>Requests</dt>
+                  <dd className="font-mono">{endpoint.requestCount.toLocaleString()}</dd>
+                  <dt>Avg</dt>
+                  <dd className="font-mono">{endpoint.avgRequestTimeMs.toFixed(2)} ms</dd>
+                  <dt>P95</dt>
+                  <dd className="font-mono">{endpoint.p95RequestTimeMs.toFixed(2)} ms</dd>
+                  <dt>P99</dt>
+                  <dd className="font-mono">{endpoint.p99RequestTimeMs.toFixed(2)} ms</dd>
+                  <dt>Error %</dt>
+                  <dd className="font-mono" style={{ color: endpoint.errorRate > 5 ? 'var(--color-error)' : endpoint.errorRate > 0 ? 'var(--color-warning)' : 'var(--color-success)' }}>
+                    {endpoint.errorRate.toFixed(2)}%
+                  </dd>
+                  <dt>Queries</dt>
+                  <dd className="font-mono">{endpoint.avgQueryCount}</dd>
+                </dl>
+              </div>
+            );
+          })}
         </div>
       )}
 

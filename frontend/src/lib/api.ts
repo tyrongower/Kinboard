@@ -118,6 +118,11 @@ export interface CalendarSource {
   colorHex: string;
   enabled: boolean;
   displayOrder: number;
+  // Comma-separated substrings, case-insensitive. null/empty = no filter.
+  titleIncludes?: string | null;
+  titleExcludes?: string | null;
+  categoryIncludes?: string | null;
+  categoryExcludes?: string | null;
 }
 
 export interface SiteSettings {

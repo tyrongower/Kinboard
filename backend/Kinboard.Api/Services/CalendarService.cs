@@ -1,4 +1,7 @@
-﻿using Kinboard.Api.Models;
+using Ical.Net;
+using Ical.Net.CalendarComponents;
+using Ical.Net.DataTypes;
+using Kinboard.Api.Models;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace Kinboard.Api.Services;
@@ -9,6 +12,8 @@ public class CalendarService : ICalendarService
     private readonly IMemoryCache _cache;
     private readonly ILogger<CalendarService> _logger;
 
+    private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(5);
+
     public CalendarService(IHttpClientFactory httpClientFactory, IMemoryCache cache, ILogger<CalendarService> logger)
     {
         _httpClientFactory = httpClientFactory;
@@ -18,9 +23,13 @@ public class CalendarService : ICalendarService
 
     public async Task<IReadOnlyList<CalendarEventDto>> GetEventsAsync(IEnumerable<CalendarSource> sources, DateTime start, DateTime end, CancellationToken ct = default)
     {
-        _logger.LogDebug("Fetching calendar events from {Start} to {End}", start, end);
+        var startUtc = ToUtc(start);
+        var endUtc = ToUtc(end);
+        _logger.LogDebug("Fetching calendar events from {Start} to {End} (UTC)", startUtc, endUtc);
+
         var list = new List<CalendarEventDto>();
         var http = _httpClientFactory.CreateClient();
+
         foreach (var s in sources)
         {
             if (!s.Enabled)
@@ -28,151 +37,171 @@ public class CalendarService : ICalendarService
                 _logger.LogDebug("Skipping disabled calendar source: {Name}", s.Name);
                 continue;
             }
-            var key = $"ics::{s.IcalUrl}";
-            string ics;
-            if (!_cache.TryGetValue(key, out ics!))
+
+            var ics = await FetchIcsAsync(http, s, ct);
+            if (ics is null) continue;
+
+            Calendar cal;
+            try
             {
+                cal = Calendar.Load(ics);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to parse iCal for source: {Name}", s.Name);
+                continue;
+            }
+
+            var titleIncludes = SplitCsv(s.TitleIncludes);
+            var titleExcludes = SplitCsv(s.TitleExcludes);
+            var categoryIncludes = SplitCsv(s.CategoryIncludes);
+            var categoryExcludes = SplitCsv(s.CategoryExcludes);
+
+            int occurrenceCount = 0;
+            int filteredCount = 0;
+            var rangeStart = new CalDateTime(startUtc);
+            foreach (var ev in cal.Events)
+            {
+                var title = ev.Summary ?? string.Empty;
+                var categories = ev.Categories?.ToList() ?? new List<string>();
+
+                if (!PassesFilters(title, categories, titleIncludes, titleExcludes, categoryIncludes, categoryExcludes))
+                {
+                    filteredCount++;
+                    continue;
+                }
+
+                IEnumerable<Occurrence> occurrences;
                 try
                 {
-                    _logger.LogDebug("Fetching iCal data for source: {Name}, URL: {Url}", s.Name, s.IcalUrl);
-                    ics = await http.GetStringAsync(s.IcalUrl, ct);
-                    _cache.Set(key, ics, TimeSpan.FromMinutes(5));
-                    _logger.LogInformation("Successfully fetched and cached iCal data for source: {Name}", s.Name);
+                    occurrences = ev.GetOccurrences(rangeStart);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to fetch iCal data for source: {Name}, URL: {Url}", s.Name, s.IcalUrl);
-                    continue; // skip broken sources
+                    _logger.LogWarning(ex, "Failed expanding event '{Summary}' in source {Name}", ev.Summary, s.Name);
+                    continue;
                 }
-            }
-            else
-            {
-                _logger.LogDebug("Using cached iCal data for source: {Name}", s.Name);
-            }
 
-            var parsedEvents = ParseIcs(ics).ToList();
-            _logger.LogDebug("Parsed {Count} events from source: {Name}", parsedEvents.Count, s.Name);
-
-            foreach (var e in parsedEvents)
-            {
-                // include only if intersects [start, end]
-                if (e.End > start && e.Start < end)
+                foreach (var occ in occurrences)
                 {
-                    list.Add(new CalendarEventDto(s.Id, s.Name, s.ColorHex, e.Title, e.Start, e.End, e.AllDay));
+                    var (occStart, occEnd, allDay) = ExtractTimes(ev, occ);
+                    if (occStart >= endUtc) break;
+                    if (occEnd <= startUtc) continue;
+                    list.Add(new CalendarEventDto(s.Id, s.Name, s.ColorHex, title, occStart, occEnd, allDay));
+                    occurrenceCount++;
                 }
             }
+            _logger.LogDebug("Source {Name}: {Count} occurrences in range, {Filtered} events filtered out", s.Name, occurrenceCount, filteredCount);
         }
         _logger.LogInformation("Returning {Count} total calendar events", list.Count);
         return list;
     }
 
-    private sealed record ParsedEvent(string Title, DateTime Start, DateTime End, bool AllDay);
-
-    private static IEnumerable<ParsedEvent> ParseIcs(string ics)
+    private async Task<string?> FetchIcsAsync(HttpClient http, CalendarSource s, CancellationToken ct)
     {
-        // Handle line folding (RFC 5545): lines starting with space/tab are continuations
-        var lines = new List<string>();
-        string? prev = null;
-        using (var reader = new StringReader(ics))
+        var key = $"ics::{s.IcalUrl}";
+        if (_cache.TryGetValue(key, out string? cached) && cached is not null)
         {
-            string? raw;
-            while ((raw = reader.ReadLine()) != null)
-            {
-                if (raw.Length > 0 && (raw[0] == ' ' || raw[0] == '\t'))
-                {
-                    prev += raw.TrimStart();
-                }
-                else
-                {
-                    if (prev != null) lines.Add(prev);
-                    prev = raw;
-                }
-            }
-            if (prev != null) lines.Add(prev);
+            _logger.LogDebug("Cache hit for source: {Name}", s.Name);
+            return cached;
         }
-
-        var events = new List<ParsedEvent>();
-        bool inEvent = false;
-        string title = string.Empty;
-        DateTime? dtStart = null;
-        DateTime? dtEnd = null;
-        bool allDay = false;
-
-        foreach (var ln in lines)
-        {
-            if (ln.StartsWith("BEGIN:VEVENT", StringComparison.OrdinalIgnoreCase))
-            {
-                inEvent = true; title = string.Empty; dtStart = null; dtEnd = null; allDay = false;
-            }
-            else if (ln.StartsWith("END:VEVENT", StringComparison.OrdinalIgnoreCase))
-            {
-                if (inEvent && dtStart.HasValue)
-                {
-                    var end = dtEnd ?? dtStart.Value.AddHours(1);
-                    events.Add(new ParsedEvent(title, dtStart.Value, end, allDay));
-                }
-                inEvent = false;
-            }
-            else if (inEvent)
-            {
-                if (ln.StartsWith("SUMMARY:", StringComparison.OrdinalIgnoreCase))
-                {
-                    title = Unescape(ln.Substring(8));
-                }
-                else if (ln.StartsWith("DTSTART", StringComparison.OrdinalIgnoreCase))
-                {
-                    (dtStart, var isAllDay) = ParseDateTime(ln);
-                    allDay = isAllDay;
-                }
-                else if (ln.StartsWith("DTEND", StringComparison.OrdinalIgnoreCase))
-                {
-                    (dtEnd, var isAllDay2) = ParseDateTime(ln);
-                    allDay = allDay || isAllDay2;
-                }
-            }
-        }
-        return events;
-    }
-
-    private static (DateTime?, bool) ParseDateTime(string line)
-    {
-        // Examples: DTSTART:20250101T120000Z, DTSTART;VALUE=DATE:20250101, DTSTART;TZID=Europe/London:20250101T090000
-        var parts = line.Split(':', 2);
-        if (parts.Length != 2) return (null, false);
-        var prop = parts[0];
-        var val = parts[1].Trim();
-        bool allDay = prop.Contains("VALUE=DATE", StringComparison.OrdinalIgnoreCase);
         try
         {
-            if (allDay)
+            _logger.LogDebug("Fetching iCal data for source: {Name}, URL: {Url}", s.Name, s.IcalUrl);
+            var ics = await http.GetStringAsync(s.IcalUrl, ct);
+            _cache.Set(key, ics, CacheTtl);
+            _logger.LogInformation("Fetched and cached iCal for source: {Name}", s.Name);
+            return ics;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to fetch iCal for source: {Name}, URL: {Url}", s.Name, s.IcalUrl);
+            return null;
+        }
+    }
+
+    private static (DateTime Start, DateTime End, bool AllDay) ExtractTimes(CalendarEvent ev, Occurrence occ)
+    {
+        bool allDay = ev.Start is not null && !ev.Start.HasTime;
+
+        var period = occ.Period;
+
+        // All-day events are date-only in iCal (VALUE=DATE). They represent calendar days
+        // in the viewer's local time, not a fixed UTC instant. Emit as Unspecified so JSON
+        // serializes without a Z suffix and clients treat as floating local midnight.
+        if (allDay)
+        {
+            var localStart = period.StartTime?.Value ?? DateTime.Today;
+            DateTime localEnd;
+            if (period.EndTime is not null)
             {
-                // YYYYMMDD as local date
-                if (DateTime.TryParseExact(val, "yyyyMMdd", null, System.Globalization.DateTimeStyles.AssumeLocal, out var d))
-                {
-                    return (d.Date, true);
-                }
+                localEnd = period.EndTime.Value;
             }
-            else if (val.EndsWith("Z", StringComparison.Ordinal))
+            else if (period.Duration is { } durLocal)
             {
-                if (DateTime.TryParseExact(val, "yyyyMMdd'T'HHmmss'Z'", null, System.Globalization.DateTimeStyles.AdjustToUniversal, out var z))
-                {
-                    return (z.ToLocalTime(), false);
-                }
+                localEnd = localStart + durLocal.ToTimeSpanUnspecified();
             }
             else
             {
-                if (DateTime.TryParseExact(val, "yyyyMMdd'T'HHmmss", null, System.Globalization.DateTimeStyles.AssumeLocal, out var l))
-                {
-                    return (l, false);
-                }
+                localEnd = localStart.AddDays(1);
             }
+            return (
+                DateTime.SpecifyKind(localStart, DateTimeKind.Unspecified),
+                DateTime.SpecifyKind(localEnd, DateTimeKind.Unspecified),
+                true);
         }
-        catch { }
-        return (null, false);
+
+        var startUtc = period.StartTime?.AsUtc ?? DateTime.UtcNow;
+        DateTime endUtc;
+
+        if (period.EndTime is not null)
+        {
+            endUtc = period.EndTime.AsUtc;
+        }
+        else if (period.Duration is { } dur)
+        {
+            endUtc = startUtc + dur.ToTimeSpanUnspecified();
+        }
+        else
+        {
+            endUtc = startUtc.AddHours(1);
+        }
+
+        return (DateTime.SpecifyKind(startUtc, DateTimeKind.Utc), DateTime.SpecifyKind(endUtc, DateTimeKind.Utc), false);
     }
 
-    private static string Unescape(string s)
+    private static DateTime ToUtc(DateTime dt)
     {
-        return s.Replace("\\n", "\n").Replace("\\,", ",").Replace("\\;", ";");
+        return dt.Kind switch
+        {
+            DateTimeKind.Utc => dt,
+            DateTimeKind.Local => dt.ToUniversalTime(),
+            _ => DateTime.SpecifyKind(dt, DateTimeKind.Utc)
+        };
+    }
+
+    private static string[] SplitCsv(string? csv)
+    {
+        if (string.IsNullOrWhiteSpace(csv)) return Array.Empty<string>();
+        return csv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    }
+
+    private static bool PassesFilters(
+        string title,
+        IReadOnlyCollection<string> categories,
+        string[] titleIncludes,
+        string[] titleExcludes,
+        string[] categoryIncludes,
+        string[] categoryExcludes)
+    {
+        var cmp = StringComparison.OrdinalIgnoreCase;
+
+        if (titleExcludes.Length > 0 && titleExcludes.Any(p => title.Contains(p, cmp))) return false;
+        if (categoryExcludes.Length > 0 && categories.Any(c => categoryExcludes.Any(p => c.Equals(p, cmp)))) return false;
+
+        if (titleIncludes.Length > 0 && !titleIncludes.Any(p => title.Contains(p, cmp))) return false;
+        if (categoryIncludes.Length > 0 && !categories.Any(c => categoryIncludes.Any(p => c.Equals(p, cmp)))) return false;
+
+        return true;
     }
 }

@@ -128,6 +128,10 @@ public class AppDbContext : DbContext
             entity.Property(e => e.ColorHex).IsRequired().HasMaxLength(7);
             entity.Property(e => e.Enabled).IsRequired().HasDefaultValue(true);
             entity.Property(e => e.DisplayOrder).IsRequired().HasDefaultValue(0);
+            entity.Property(e => e.TitleIncludes).HasMaxLength(1000);
+            entity.Property(e => e.TitleExcludes).HasMaxLength(1000);
+            entity.Property(e => e.CategoryIncludes).HasMaxLength(500);
+            entity.Property(e => e.CategoryExcludes).HasMaxLength(500);
             entity.HasIndex(e => e.DisplayOrder);
         });
 

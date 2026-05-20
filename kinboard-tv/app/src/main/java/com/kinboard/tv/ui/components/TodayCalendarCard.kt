@@ -33,13 +33,20 @@ import java.time.format.DateTimeParseException
 
 private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
+// Backend emits UTC times with 'Z' suffix for timed events, naked local-date-time for all-day.
 private fun parseDateTime(value: String): LocalDateTime? = try {
-    LocalDateTime.parse(value.removeSuffix("Z"))
+    java.time.Instant.parse(value)
+        .atZone(java.time.ZoneId.systemDefault())
+        .toLocalDateTime()
 } catch (e: DateTimeParseException) {
     try {
-        LocalDate.parse(value).atStartOfDay()
+        LocalDateTime.parse(value)
     } catch (e2: Exception) {
-        null
+        try {
+            LocalDate.parse(value).atStartOfDay()
+        } catch (e3: Exception) {
+            null
+        }
     }
 }
 

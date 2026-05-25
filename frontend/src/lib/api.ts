@@ -134,6 +134,7 @@ export interface SiteSettings {
   weatherRefreshSeconds?: number; // default 1800
   weatherApiKey?: string;
   weatherLocation?: string;
+  schoolStartTime?: string | null; // "HH:mm" 24h, null = no morning countdown
 }
 
 export interface CalendarEventItem {

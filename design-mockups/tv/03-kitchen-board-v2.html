@@ -1,0 +1,494 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Kinboard TV · Kitchen Wall v2 (morning, 2 kids)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&family=Patrick+Hand&family=Fraunces:opsz,wght@9..144,700;9..144,900&family=Special+Elite&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cork-dark:#7a5530;
+    --cork:#a07a4a;
+    --cork-light:#b88e57;
+    --ink:#1f1a14;
+    --ink-soft:#4a3b2c;
+
+    --note-yellow:#ffe26b;
+    --note-yellow-edge:#e6c43c;
+    --note-mint:#b9e8c6;
+    --note-mint-edge:#82caa0;
+    --note-blue:#bcd6ff;
+    --note-pink:#ffc8da;
+
+    --paper:#f5ecd6;
+    --pin-red:#c8362a;
+    --pin-blue:#2f5fa8;
+    --pin-yellow:#e0a814;
+    --pin-green:#3d8b56;
+
+    --sky-1:#7ec7ff;
+    --sky-2:#cfe9ff;
+    --sun:#ffce3b;
+    --rain:#3aa9ff;
+    --warn:#e85a3a;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;height:100%;background:#000;font-family:'Patrick Hand',cursive;color:var(--ink);-webkit-font-smoothing:antialiased}
+  .tv{
+    width:1920px;height:1080px;margin:0 auto;position:relative;overflow:hidden;
+    background:
+      radial-gradient(rgba(255,220,170,.06) 0.8px, transparent 1.2px) 0 0/4px 4px,
+      radial-gradient(rgba(60,30,10,.20) 0.8px, transparent 1.2px) 2px 2px/5px 5px,
+      radial-gradient(ellipse at 50% 0%, rgba(255,210,150,.16), transparent 60%),
+      radial-gradient(ellipse at 50% 100%, rgba(60,30,10,.35), transparent 65%),
+      linear-gradient(160deg, var(--cork-light) 0%, var(--cork) 45%, var(--cork-dark) 100%);
+  }
+  @media (max-width:1920px){.tv{transform:scale(calc(100vw/1920));transform-origin:top left}}
+  @media (max-height:1080px) and (min-width:1920px){.tv{transform:scale(calc(100vh/1080));transform-origin:top left}}
+  .tv::before{
+    content:"";position:absolute;inset:0;pointer-events:none;
+    border:24px solid #4a2f17;
+    box-shadow:inset 0 0 0 2px #2c1a08, inset 0 0 80px rgba(0,0,0,.4), inset 0 0 240px rgba(0,0,0,.25);
+  }
+
+  /* ─── Top chalkboard banner ─── */
+  .header{
+    position:absolute;left:60px;top:42px;right:60px;height:180px;
+    background:
+      radial-gradient(ellipse at 30% 30%, rgba(255,255,255,.04), transparent 50%),
+      linear-gradient(180deg, #1d2a22 0%, #14201a 100%);
+    border:6px solid #5a3a1c;border-radius:10px;
+    box-shadow:0 14px 24px rgba(0,0,0,.45), inset 0 0 200px rgba(255,255,255,.025);
+    color:#f3eede;padding:20px 32px;
+    display:grid;grid-template-columns: 1.2fr 1fr 1.4fr;align-items:center;gap:30px;
+    transform:rotate(-0.5deg);
+  }
+  .header::before{
+    content:"";position:absolute;inset:0;border-radius:4px;pointer-events:none;
+    background:
+      radial-gradient(rgba(255,255,255,.06) 0.5px, transparent 1px) 0 0/3px 3px,
+      radial-gradient(rgba(255,255,255,.04) 0.5px, transparent 1px) 1px 2px/5px 5px;
+    mix-blend-mode:screen;opacity:.5;
+  }
+  .tape{
+    position:absolute;width:140px;height:32px;
+    background:repeating-linear-gradient(135deg, rgba(255,240,200,.55) 0 8px, rgba(255,240,200,.4) 8px 16px);
+    border:1px solid rgba(255,240,200,.5);box-shadow:0 2px 6px rgba(0,0,0,.35);pointer-events:none;
+  }
+  .header .tape.tl{top:-14px;left:30px;transform:rotate(-10deg)}
+  .header .tape.tr{top:-16px;right:30px;transform:rotate(8deg)}
+
+  .brand{font-family:'Caveat',cursive;font-weight:700;font-size:88px;line-height:.85;color:#fff8e2;text-shadow:0 2px 0 rgba(0,0,0,.5)}
+  .brand small{display:block;font-family:'Patrick Hand',cursive;font-size:26px;color:#e7d8a4;letter-spacing:.06em;margin-top:-2px}
+
+  .countdown{
+    text-align:center;
+    border-left:1px dashed rgba(255,255,255,.25);
+    border-right:1px dashed rgba(255,255,255,.25);
+    padding:6px 16px;
+  }
+  .countdown .lbl{font-family:'Special Elite',monospace;font-size:18px;letter-spacing:.20em;color:#e7d8a4;text-transform:uppercase}
+  .countdown .big{
+    font-family:'Caveat',cursive;font-weight:700;font-size:110px;line-height:.85;color:#ffce3b;letter-spacing:.02em;
+    text-shadow:0 0 30px rgba(255,206,59,.45);
+  }
+  .countdown .big small{font-family:'Patrick Hand',cursive;font-size:34px;color:#fff8e2;display:inline-block;margin-left:6px}
+  .countdown .sub{font-family:'Patrick Hand',cursive;font-size:22px;color:#cfc28b;margin-top:-4px}
+
+  /* weather strip: 3 polaroid days */
+  .wx{
+    display:grid;grid-template-columns: repeat(3, 1fr);gap:14px;justify-items:end;
+  }
+  .day{
+    width:160px;background:#fff8e2;border:5px solid #fff;border-radius:4px;
+    box-shadow:0 8px 18px rgba(0,0,0,.45);transform:rotate(var(--r,-2deg));
+    padding:10px 8px 12px 8px;text-align:center;color:var(--ink);position:relative;
+  }
+  .day .pin{
+    position:absolute;top:-12px;left:50%;transform:translateX(-50%);
+    width:22px;height:22px;border-radius:50%;
+    background:radial-gradient(circle at 30% 30%,#fff 0%,var(--pin) 40%,#5a1a14 100%);
+    box-shadow:0 4px 0 -1px rgba(0,0,0,.35),0 8px 12px rgba(0,0,0,.5);z-index:3;
+  }
+  .day.d1{--pin:var(--pin-red);--r:-3deg}
+  .day.d2{--pin:var(--pin-yellow);--r:1.5deg}
+  .day.d3{--pin:var(--pin-blue);--r:-1.5deg}
+  .day .d-day{font-family:'Caveat',cursive;font-weight:700;font-size:34px;line-height:.9}
+  .day .d-date{font-family:'Special Elite',monospace;font-size:11px;letter-spacing:.16em;color:var(--ink-soft);text-transform:uppercase}
+  .day svg.weather-icon{display:block;width:80px;height:80px;margin:4px auto -2px auto}
+  .day .d-temp{font-family:'Caveat',cursive;font-weight:700;font-size:42px;color:var(--ink);line-height:1}
+  .day .d-temp .lo{color:var(--ink-soft);font-size:28px}
+  .day .d-cue{
+    margin-top:4px;font-family:'Patrick Hand',cursive;font-size:18px;color:var(--ink-soft);
+    background:rgba(31,26,20,.08);border-radius:18px;padding:2px 8px;display:inline-block;
+  }
+
+  /* ─── 2 big sticky notes (per kid) ─── */
+  .kids{
+    position:absolute;left:60px;right:60px;top:248px;height:660px;
+    display:grid;grid-template-columns:1fr 1fr;gap:36px;padding:30px 8px;
+  }
+  .note{
+    position:relative;padding:24px 26px 26px 26px;
+    background:var(--bg);color:var(--ink);
+    box-shadow:0 1px 0 var(--bg-edge),0 22px 32px rgba(0,0,0,.45),0 36px 56px rgba(0,0,0,.18);
+    transform:rotate(var(--rot,-1deg));border-radius:1px;
+    background-image:
+      radial-gradient(rgba(0,0,0,.04) 0.5px,transparent 1px),
+      linear-gradient(180deg,color-mix(in srgb,var(--bg) 96%,white) 0%,var(--bg) 100%);
+    background-size:4px 4px,auto;
+  }
+  .note::after{
+    content:"";position:absolute;right:0;bottom:0;width:42px;height:42px;
+    background:linear-gradient(135deg,transparent 49.5%,var(--bg-edge) 50%,color-mix(in srgb,var(--bg-edge) 60%,black) 100%);
+    clip-path:polygon(100% 0,100% 100%,0 100%);opacity:.65;
+  }
+  .note .pin{
+    position:absolute;top:-14px;left:80px;
+    width:28px;height:28px;border-radius:50%;
+    background:radial-gradient(circle at 30% 30%,#fff 0%,var(--pin) 40%,#5a1a14 100%);
+    box-shadow:0 4px 0 -1px rgba(0,0,0,.35),0 8px 12px rgba(0,0,0,.5);z-index:3;
+  }
+  .note[data-c="yellow"]{--bg:var(--note-yellow);--bg-edge:var(--note-yellow-edge);--pin:var(--pin-red)}
+  .note[data-c="mint"]{--bg:var(--note-mint);--bg-edge:var(--note-mint-edge);--pin:var(--pin-blue)}
+
+  .note .head{
+    display:grid;grid-template-columns:140px 1fr auto;gap:18px;align-items:center;
+    border-bottom:3px solid rgba(31,26,20,.35);padding-bottom:12px;margin-bottom:14px;
+  }
+  .avatar-ring{
+    width:140px;height:140px;border-radius:50%;
+    background:#fff;
+    box-shadow:0 0 0 4px var(--bg-edge),0 8px 14px rgba(0,0,0,.25);
+    display:grid;place-items:center;overflow:hidden;
+  }
+  .avatar-ring svg{width:130px;height:130px}
+  .head .who{font-family:'Caveat',cursive;font-weight:700;font-size:96px;line-height:.85;color:var(--ink)}
+  .head .who small{display:block;font-family:'Patrick Hand',cursive;font-size:24px;color:var(--ink-soft);letter-spacing:.04em;margin-top:2px}
+  .head .frac{
+    font-family:'Caveat',cursive;font-weight:700;font-size:74px;line-height:.85;
+    color:var(--ink);text-align:right;
+  }
+  .head .frac small{display:block;font-family:'Special Elite',monospace;font-size:12px;letter-spacing:.18em;color:var(--ink-soft);text-transform:uppercase;margin-top:2px}
+
+  .pbar{height:14px;border-radius:14px;background:rgba(31,26,20,.18);overflow:hidden;margin-bottom:14px;position:relative}
+  .pbar i{display:block;height:100%;background:var(--ink);opacity:.6;border-radius:14px}
+  .pbar::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0 7px,rgba(0,0,0,.08) 7px 8px);border-radius:14px}
+
+  .tasks{display:flex;flex-direction:column;gap:6px}
+  .task{
+    display:grid;grid-template-columns:84px 1fr 56px;gap:14px;align-items:center;
+    padding:6px 8px;border-radius:10px;
+  }
+  .task .icon{
+    width:80px;height:80px;border-radius:18px;background:#fff8e2;
+    border:2px solid rgba(31,26,20,.35);
+    display:grid;place-items:center;box-shadow:0 3px 0 rgba(0,0,0,.18) inset, 0 4px 8px rgba(0,0,0,.18);
+  }
+  .task .icon svg{width:56px;height:56px}
+  .task .t{font-family:'Patrick Hand',cursive;font-size:34px;line-height:1.05;color:var(--ink)}
+  .task .t small{display:block;font-family:'Patrick Hand',cursive;font-size:20px;color:var(--ink-soft);margin-top:2px}
+  .task .box{
+    width:52px;height:52px;border:3px solid var(--ink);border-radius:10px;
+    background:rgba(255,255,255,.45);display:grid;place-items:center;justify-self:end;
+  }
+  .task.done{opacity:.7}
+  .task.done .t{
+    text-decoration:line-through;text-decoration-style:wavy;text-decoration-color:rgba(31,26,20,.5);
+    color:var(--ink-soft);
+  }
+  .task.done .icon{background:rgba(255,255,255,.6);filter:grayscale(.4)}
+  .task.done .box::after{
+    content:"";width:50px;height:50px;
+    background:
+      linear-gradient(45deg,transparent 38%,var(--pin) 39%,var(--pin) 58%,transparent 59%),
+      linear-gradient(-45deg,transparent 38%,var(--pin) 39%,var(--pin) 58%,transparent 59%);
+    transform:scale(1.05) rotate(-6deg);
+  }
+  .task.next{
+    background:linear-gradient(90deg,rgba(255,255,255,.7),rgba(255,255,255,.2) 90%);
+    box-shadow:inset 6px 0 0 var(--pin),0 4px 10px rgba(0,0,0,.18);
+  }
+  .task.next::before{
+    content:"NEXT →";position:absolute;
+    font-family:'Special Elite',monospace;font-size:18px;letter-spacing:.18em;color:var(--pin);
+    margin-left:-10px;margin-top:-46px;background:#fff;padding:3px 8px;border-radius:4px;
+    box-shadow:0 3px 6px rgba(0,0,0,.25);transform:rotate(-3deg);
+  }
+  /* D-pad focus indicator */
+  .task.focused{
+    outline:4px solid var(--pin);outline-offset:2px;border-radius:12px;
+    background:linear-gradient(90deg,rgba(255,255,255,.9),rgba(255,255,255,.4) 90%);
+  }
+  .task.focused .icon{transform:scale(1.04);box-shadow:0 4px 0 var(--pin) inset, 0 6px 12px rgba(0,0,0,.25)}
+
+  /* ─── bottom agenda (today only, slim) ─── */
+  .agenda{
+    position:absolute;left:60px;right:60px;bottom:36px;height:120px;
+    background:
+      repeating-linear-gradient(180deg,transparent 0 28px,rgba(31,26,20,.08) 28px 29px),
+      linear-gradient(180deg,#f6efd6 0%,#ebe1bd 100%);
+    border:1px solid rgba(31,26,20,.25);box-shadow:0 14px 22px rgba(0,0,0,.45);
+    padding:12px 22px;transform:rotate(0.3deg);
+    display:grid;grid-template-columns:200px 1fr;gap:20px;align-items:center;position:relative;
+  }
+  .agenda::before{content:"";position:absolute;left:60px;top:0;bottom:0;width:1px;background:rgba(180,40,30,.4)}
+  .agenda h2{margin:0;font-family:'Caveat',cursive;font-weight:700;font-size:54px;line-height:.85;color:var(--ink)}
+  .agenda h2 small{display:block;font-family:'Special Elite',monospace;font-size:13px;letter-spacing:.18em;color:var(--ink-soft);text-transform:uppercase;margin-top:4px}
+  .events{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  .ev{
+    background:#fff8de;border:1px solid rgba(31,26,20,.3);box-shadow:0 3px 6px rgba(0,0,0,.2);
+    padding:8px 12px;font-family:'Patrick Hand',cursive;font-size:22px;color:var(--ink);transform:rotate(var(--er,-1deg));
+  }
+  .ev .when{display:block;font-family:'Special Elite',monospace;font-size:13px;letter-spacing:.14em;color:var(--ink-soft);text-transform:uppercase;margin-bottom:2px}
+  .ev.now{background:#1f1a14;color:#fff8de;border-color:#1f1a14}
+  .ev.now .when{color:#ffd86b}
+  .ev.pink{background:#ffd6e0}
+  .ev.mint{background:#d6efd9}
+  .ev.blue{background:#d4e0fa}
+
+</style>
+</head>
+<body>
+<div class="tv">
+
+  <!-- ── SVG SYMBOL LIBRARY (Flutter: ship as assets/icons/*.svg) ── -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <!-- task icons, viewBox 64 -->
+      <symbol id="i-bed" viewBox="0 0 64 64">
+        <path d="M6 44h52v10H6z" fill="#a78360" stroke="#1f1a14" stroke-width="3" stroke-linejoin="round"/>
+        <path d="M6 44V30c0-4 3-7 7-7h16c4 0 7 3 7 7v8" fill="#ffe26b" stroke="#1f1a14" stroke-width="3" stroke-linejoin="round"/>
+        <path d="M36 38h22v6H36z" fill="#ffd6e0" stroke="#1f1a14" stroke-width="3"/>
+        <path d="M6 54v6M58 54v6" stroke="#1f1a14" stroke-width="3" stroke-linecap="round"/>
+      </symbol>
+      <symbol id="i-teeth" viewBox="0 0 64 64">
+        <rect x="10" y="10" width="44" height="14" rx="3" fill="#fff" stroke="#1f1a14" stroke-width="3"/>
+        <path d="M16 24h32M22 24v4M28 24v4M34 24v4M40 24v4" stroke="#1f1a14" stroke-width="3" stroke-linecap="round"/>
+        <rect x="28" y="28" width="8" height="22" rx="3" fill="#7ec7ff" stroke="#1f1a14" stroke-width="3"/>
+        <circle cx="32" cy="56" r="4" fill="#7ec7ff" stroke="#1f1a14" stroke-width="3"/>
+      </symbol>
+      <symbol id="i-shirt" viewBox="0 0 64 64">
+        <path d="M14 14l-8 8 6 8 6-4v28h28V26l6 4 6-8-8-8-8 4c-2 4-6 6-10 6s-8-2-10-6z" fill="#7ec7ff" stroke="#1f1a14" stroke-width="3" stroke-linejoin="round"/>
+        <path d="M24 14c2 4 5 6 8 6s6-2 8-6" fill="none" stroke="#1f1a14" stroke-width="3"/>
+        <circle cx="32" cy="34" r="2" fill="#1f1a14"/>
+      </symbol>
+      <symbol id="i-bowl" viewBox="0 0 64 64">
+        <path d="M4 30h56c0 14-12 24-28 24S4 44 4 30z" fill="#ffce3b" stroke="#1f1a14" stroke-width="3" stroke-linejoin="round"/>
+        <ellipse cx="32" cy="30" rx="28" ry="5" fill="#fff8e2" stroke="#1f1a14" stroke-width="3"/>
+        <path d="M22 22c2-4 4-4 4-8M32 22c2-4 4-4 4-8M42 22c2-4 4-4 4-8" stroke="#1f1a14" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <path d="M44 26c0-2 2-2 4-2v8" fill="#c8362a" stroke="#1f1a14" stroke-width="3"/>
+      </symbol>
+      <symbol id="i-brush" viewBox="0 0 64 64">
+        <ellipse cx="32" cy="22" rx="22" ry="14" fill="#ffd6e0" stroke="#1f1a14" stroke-width="3"/>
+        <path d="M32 36v22" stroke="#1f1a14" stroke-width="6" stroke-linecap="round"/>
+        <path d="M14 22v4M22 22v4M30 22v4M38 22v4M46 22v4M50 22v4" stroke="#1f1a14" stroke-width="3" stroke-linecap="round"/>
+        <circle cx="32" cy="58" r="4" fill="#ffd6e0" stroke="#1f1a14" stroke-width="3"/>
+      </symbol>
+      <symbol id="i-shoes" viewBox="0 0 64 64">
+        <path d="M6 44c0-6 4-12 12-12 8 0 10 6 18 6h22c2 0 4 2 4 6v6c0 4-2 6-6 6H10c-2 0-4-2-4-4z" fill="#3aa9ff" stroke="#1f1a14" stroke-width="3" stroke-linejoin="round"/>
+        <path d="M14 38l4-6M22 38l4-6M30 38l4-6" stroke="#1f1a14" stroke-width="3" stroke-linecap="round"/>
+        <rect x="6" y="48" width="56" height="6" fill="#fff" stroke="#1f1a14" stroke-width="3"/>
+      </symbol>
+      <symbol id="i-bag" viewBox="0 0 64 64">
+        <path d="M22 14c0-4 4-8 10-8s10 4 10 8" fill="none" stroke="#1f1a14" stroke-width="3" stroke-linecap="round"/>
+        <rect x="10" y="14" width="44" height="42" rx="6" fill="#c8362a" stroke="#1f1a14" stroke-width="3"/>
+        <rect x="20" y="28" width="24" height="14" rx="3" fill="#fff8e2" stroke="#1f1a14" stroke-width="3"/>
+        <circle cx="32" cy="35" r="2" fill="#1f1a14"/>
+      </symbol>
+      <symbol id="i-lunch" viewBox="0 0 64 64">
+        <rect x="8" y="18" width="48" height="36" rx="5" fill="#82caa0" stroke="#1f1a14" stroke-width="3"/>
+        <rect x="20" y="10" width="24" height="10" rx="3" fill="#82caa0" stroke="#1f1a14" stroke-width="3"/>
+        <rect x="8" y="30" width="48" height="3" fill="#1f1a14"/>
+        <circle cx="44" cy="42" r="4" fill="#fff" stroke="#1f1a14" stroke-width="3"/>
+      </symbol>
+      <symbol id="i-bottle" viewBox="0 0 64 64">
+        <rect x="24" y="6" width="16" height="8" fill="#1f1a14"/>
+        <path d="M20 14h24v44c0 2-2 4-4 4H24c-2 0-4-2-4-4z" fill="#7ec7ff" stroke="#1f1a14" stroke-width="3"/>
+        <path d="M20 26h24" stroke="#1f1a14" stroke-width="3"/>
+        <path d="M28 34c0 6 8 6 8 12" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+      </symbol>
+      <symbol id="i-coat" viewBox="0 0 64 64">
+        <path d="M20 12l-12 6v18l8 2v22h32V38l8-2V18l-12-6c-2 6-6 8-12 8s-10-2-12-8z" fill="#e85a3a" stroke="#1f1a14" stroke-width="3" stroke-linejoin="round"/>
+        <path d="M32 20v40" stroke="#1f1a14" stroke-width="3"/>
+        <circle cx="28" cy="30" r="2" fill="#1f1a14"/>
+        <circle cx="28" cy="42" r="2" fill="#1f1a14"/>
+      </symbol>
+      <symbol id="i-face" viewBox="0 0 64 64">
+        <circle cx="32" cy="34" r="22" fill="#ffd6a8" stroke="#1f1a14" stroke-width="3"/>
+        <circle cx="24" cy="32" r="2.5" fill="#1f1a14"/>
+        <circle cx="40" cy="32" r="2.5" fill="#1f1a14"/>
+        <path d="M22 42c4 4 16 4 20 0" fill="none" stroke="#1f1a14" stroke-width="3" stroke-linecap="round"/>
+        <path d="M14 22c2-2 4-4 8-4M50 22c-2-2-4-4-8-4" stroke="#3aa9ff" stroke-width="3" stroke-linecap="round" fill="none"/>
+        <circle cx="14" cy="22" r="2.5" fill="#3aa9ff"/>
+        <circle cx="50" cy="22" r="2.5" fill="#3aa9ff"/>
+      </symbol>
+
+      <!-- weather icons -->
+      <symbol id="w-sun" viewBox="0 0 64 64">
+        <circle cx="32" cy="32" r="14" fill="#ffce3b" stroke="#1f1a14" stroke-width="3"/>
+        <g stroke="#1f1a14" stroke-width="3" stroke-linecap="round">
+          <path d="M32 4v8M32 52v8M4 32h8M52 32h8M12 12l6 6M46 46l6 6M52 12l-6 6M12 52l6-6"/>
+        </g>
+      </symbol>
+      <symbol id="w-sun-cloud" viewBox="0 0 64 64">
+        <circle cx="22" cy="22" r="11" fill="#ffce3b" stroke="#1f1a14" stroke-width="3"/>
+        <g stroke="#1f1a14" stroke-width="3" stroke-linecap="round">
+          <path d="M22 2v6M2 22h6M8 8l4 4M36 8l-4 4"/>
+        </g>
+        <path d="M22 50c-8 0-12-6-12-10s4-8 9-8c1-6 6-10 12-10s12 5 12 12c4 0 9 3 9 8s-4 8-12 8z" fill="#fff" stroke="#1f1a14" stroke-width="3" stroke-linejoin="round"/>
+      </symbol>
+      <symbol id="w-rain" viewBox="0 0 64 64">
+        <path d="M22 38c-8 0-12-6-12-10s4-8 9-8c1-6 6-10 12-10s12 5 12 12c4 0 9 3 9 8s-4 8-12 8z" fill="#b8c8d8" stroke="#1f1a14" stroke-width="3" stroke-linejoin="round"/>
+        <g fill="#3aa9ff" stroke="#1f1a14" stroke-width="2.5" stroke-linejoin="round">
+          <path d="M18 44l-3 8c-1 3 2 5 4 4s3-3 2-5z"/>
+          <path d="M32 46l-3 8c-1 3 2 5 4 4s3-3 2-5z"/>
+          <path d="M46 44l-3 8c-1 3 2 5 4 4s3-3 2-5z"/>
+        </g>
+      </symbol>
+      <symbol id="w-cloud" viewBox="0 0 64 64">
+        <path d="M22 48c-8 0-14-6-14-12s5-10 11-10c1-7 7-12 14-12s14 6 14 14c5 0 11 4 11 10s-5 10-13 10z" fill="#dde6ef" stroke="#1f1a14" stroke-width="3" stroke-linejoin="round"/>
+      </symbol>
+
+      <!-- kid avatars -->
+      <symbol id="kid-felix" viewBox="0 0 130 130">
+        <!-- bg circle -->
+        <circle cx="65" cy="65" r="62" fill="#bcd6ff"/>
+        <!-- shoulders -->
+        <path d="M14 130c0-20 22-36 51-36s51 16 51 36" fill="#3aa9ff"/>
+        <!-- neck -->
+        <rect x="58" y="78" width="14" height="14" fill="#ffd6a8"/>
+        <!-- head -->
+        <circle cx="65" cy="58" r="30" fill="#ffd6a8" stroke="#1f1a14" stroke-width="3"/>
+        <!-- hair -->
+        <path d="M36 56c0-18 14-28 29-28 16 0 30 10 30 28-6-2-12-8-30-8s-23 6-29 8z" fill="#3b2a1a" stroke="#1f1a14" stroke-width="3" stroke-linejoin="round"/>
+        <!-- eyes -->
+        <circle cx="55" cy="58" r="3.5" fill="#1f1a14"/>
+        <circle cx="76" cy="58" r="3.5" fill="#1f1a14"/>
+        <!-- cheeks -->
+        <circle cx="48" cy="68" r="4" fill="#ffb0b8" opacity=".6"/>
+        <circle cx="82" cy="68" r="4" fill="#ffb0b8" opacity=".6"/>
+        <!-- smile -->
+        <path d="M55 72c3 4 12 4 15 0" stroke="#1f1a14" stroke-width="3" fill="none" stroke-linecap="round"/>
+      </symbol>
+      <symbol id="kid-iris" viewBox="0 0 130 130">
+        <circle cx="65" cy="65" r="62" fill="#ffe6c2"/>
+        <path d="M14 130c0-20 22-36 51-36s51 16 51 36" fill="#e85a3a"/>
+        <rect x="58" y="78" width="14" height="14" fill="#f3c89a"/>
+        <circle cx="65" cy="58" r="30" fill="#f3c89a" stroke="#1f1a14" stroke-width="3"/>
+        <!-- pigtails -->
+        <path d="M30 60c-8 6-10 16-6 24l8-3c-2-6-1-12 4-18z" fill="#a05a2a" stroke="#1f1a14" stroke-width="3" stroke-linejoin="round"/>
+        <path d="M100 60c8 6 10 16 6 24l-8-3c2-6 1-12-4-18z" fill="#a05a2a" stroke="#1f1a14" stroke-width="3" stroke-linejoin="round"/>
+        <!-- hair top -->
+        <path d="M37 54c0-16 12-26 28-26s28 10 28 26c-6-4-14-6-28-6s-22 2-28 6z" fill="#a05a2a" stroke="#1f1a14" stroke-width="3" stroke-linejoin="round"/>
+        <!-- bow -->
+        <path d="M86 36l8-4-2 8-8 2z" fill="#ff6b8a" stroke="#1f1a14" stroke-width="2.5"/>
+        <circle cx="55" cy="60" r="3.5" fill="#1f1a14"/>
+        <circle cx="76" cy="60" r="3.5" fill="#1f1a14"/>
+        <circle cx="48" cy="70" r="4" fill="#ffb0b8" opacity=".7"/>
+        <circle cx="82" cy="70" r="4" fill="#ffb0b8" opacity=".7"/>
+        <path d="M55 74c3 4 12 4 15 0" stroke="#1f1a14" stroke-width="3" fill="none" stroke-linecap="round"/>
+      </symbol>
+    </defs>
+  </svg>
+
+  <!-- ── HEADER ── -->
+  <header class="header">
+    <span class="tape tl"></span><span class="tape tr"></span>
+    <div class="brand">
+      Kinboard
+      <small>~ good morning, family ~</small>
+    </div>
+    <div class="countdown">
+      <div class="lbl">school in</div>
+      <div class="big">47<small>min</small></div>
+      <div class="sub">bus stop · 8:25 am</div>
+    </div>
+    <div class="wx">
+      <div class="day d1">
+        <span class="pin"></span>
+        <div class="d-day">Tue</div>
+        <div class="d-date">today · 26 may</div>
+        <svg class="weather-icon"><use href="#w-sun-cloud"/></svg>
+        <div class="d-temp">19° <span class="lo">11°</span></div>
+        <div class="d-cue">jumper</div>
+      </div>
+      <div class="day d2">
+        <span class="pin"></span>
+        <div class="d-day">Wed</div>
+        <div class="d-date">tomorrow</div>
+        <svg class="weather-icon"><use href="#w-sun"/></svg>
+        <div class="d-temp">21° <span class="lo">12°</span></div>
+        <div class="d-cue">t-shirt!</div>
+      </div>
+      <div class="day d3">
+        <span class="pin"></span>
+        <div class="d-day">Thu</div>
+        <div class="d-date">28 may</div>
+        <svg class="weather-icon"><use href="#w-rain"/></svg>
+        <div class="d-temp">17° <span class="lo">9°</span></div>
+        <div class="d-cue">raincoat</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── 2 KIDS ── -->
+  <section class="kids">
+
+    <!-- Felix -->
+    <article class="note" data-c="yellow" style="--rot:-1.6deg">
+      <span class="pin"></span>
+      <div class="head">
+        <div class="avatar-ring"><svg><use href="#kid-felix"/></svg></div>
+        <div class="who">Felix<small>good morning ☀</small></div>
+        <div class="frac">3<span style="font-size:38px;color:var(--ink-soft)">/7</span><small>jobs done</small></div>
+      </div>
+      <div class="pbar"><i style="width:43%"></i></div>
+      <div class="tasks">
+        <div class="task done"><span class="icon"><svg><use href="#i-bed"/></svg></span><span class="t">Make your bed</span><span class="box"></span></div>
+        <div class="task done"><span class="icon"><svg><use href="#i-face"/></svg></span><span class="t">Wash your face</span><span class="box"></span></div>
+        <div class="task done"><span class="icon"><svg><use href="#i-teeth"/></svg></span><span class="t">Brush teeth<small>2 minutes ⏱</small></span><span class="box"></span></div>
+        <div class="task next focused"><span class="icon"><svg><use href="#i-shirt"/></svg></span><span class="t">Get dressed<small>uniform · jumper today</small></span><span class="box"></span></div>
+        <div class="task"><span class="icon"><svg><use href="#i-bowl"/></svg></span><span class="t">Eat breakfast</span><span class="box"></span></div>
+        <div class="task"><span class="icon"><svg><use href="#i-shoes"/></svg></span><span class="t">Shoes on</span><span class="box"></span></div>
+        <div class="task"><span class="icon"><svg><use href="#i-bag"/></svg></span><span class="t">School bag ready</span><span class="box"></span></div>
+      </div>
+    </article>
+
+    <!-- Iris -->
+    <article class="note" data-c="mint" style="--rot:1.4deg">
+      <span class="pin"></span>
+      <div class="head">
+        <div class="avatar-ring"><svg><use href="#kid-iris"/></svg></div>
+        <div class="who">Iris<small>nearly there!</small></div>
+        <div class="frac">5<span style="font-size:38px;color:var(--ink-soft)">/7</span><small>jobs done</small></div>
+      </div>
+      <div class="pbar"><i style="width:71%"></i></div>
+      <div class="tasks">
+        <div class="task done"><span class="icon"><svg><use href="#i-bed"/></svg></span><span class="t">Make your bed</span><span class="box"></span></div>
+        <div class="task done"><span class="icon"><svg><use href="#i-face"/></svg></span><span class="t">Wash your face</span><span class="box"></span></div>
+        <div class="task done"><span class="icon"><svg><use href="#i-teeth"/></svg></span><span class="t">Brush teeth</span><span class="box"></span></div>
+        <div class="task done"><span class="icon"><svg><use href="#i-shirt"/></svg></span><span class="t">Get dressed</span><span class="box"></span></div>
+        <div class="task done"><span class="icon"><svg><use href="#i-brush"/></svg></span><span class="t">Brush hair<small>plait if you like</small></span><span class="box"></span></div>
+        <div class="task next"><span class="icon"><svg><use href="#i-bowl"/></svg></span><span class="t">Eat breakfast<small>cereal in the cupboard</small></span><span class="box"></span></div>
+        <div class="task"><span class="icon"><svg><use href="#i-bag"/></svg></span><span class="t">School bag · water · lunch</span><span class="box"></span></div>
+      </div>
+    </article>
+
+  </section>
+
+  <!-- ── AGENDA ── -->
+  <section class="agenda">
+    <h2>Today<br><small>tue 26 may · 4 things on</small></h2>
+    <div class="events">
+      <div class="ev now" style="--er:-1.5deg"><span class="when">08:25</span>Bus to school</div>
+      <div class="ev mint" style="--er:0.8deg"><span class="when">15:10</span>Pickup</div>
+      <div class="ev blue" style="--er:-1deg"><span class="when">16:00</span>Piano · Iris</div>
+      <div class="ev pink" style="--er:1.2deg"><span class="when">18:30</span>Dinner together</div>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>

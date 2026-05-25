@@ -86,6 +86,31 @@ export default function SiteSettingsAdmin() {
       )}
 
       <div className="flex flex-col gap-6">
+        {/* Morning Routine */}
+        <div className="card p-6">
+          <h3
+            className="text-lg font-semibold mb-4"
+            style={{ color: 'var(--color-text)' }}
+          >
+            Morning Routine
+          </h3>
+
+          <div className="form-group">
+            <label className="label">School start time</label>
+            <input
+              type="time"
+              className="input"
+              value={settings?.schoolStartTime ?? ''}
+              onChange={(e) =>
+                setSettings(s => s ? { ...s, schoolStartTime: e.target.value || null } : s)
+              }
+            />
+            <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginTop: '0.25rem' }}>
+              Used by the TV kiosk to show a "school in N min" countdown. Leave blank to hide it.
+            </p>
+          </div>
+        </div>
+
         {/* Calendar Settings */}
         <div className="card p-6">
           <h3 

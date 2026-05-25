@@ -29,6 +29,10 @@
       android:theme="@style/Theme.KinboardTV"
       tools:targetApi="31">
 
+        <meta-data
+            android:name="preloaded_fonts"
+            android:resource="@array/preloaded_fonts" />
+
         <activity
             android:name="com.kinboard.tv.MainActivity"
             android:exported="true"

@@ -1,0 +1,536 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Kinboard TV · The Kitchen Wall</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&family=Patrick+Hand&family=Shadows+Into+Light&family=Fraunces:opsz,wght@9..144,500;9..144,800&family=Special+Elite&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cork-dark:#7a5530;
+    --cork:#a07a4a;
+    --cork-light:#b88e57;
+    --cork-spec:#d0a36c;
+    --ink:#1f1a14;
+    --ink-soft:#4a3b2c;
+
+    --note-yellow:#ffe26b;
+    --note-yellow-edge:#e6c43c;
+    --note-pink:#ffb6c8;
+    --note-pink-edge:#e98aa2;
+    --note-mint:#b9e8c6;
+    --note-mint-edge:#82caa0;
+    --note-blue:#bcd6ff;
+    --note-blue-edge:#7faae5;
+    --note-peach:#ffc89a;
+    --note-peach-edge:#e89a5f;
+
+    --paper:#f5ecd6;
+    --paper-edge:#d9c694;
+    --twine:#3b2412;
+    --pin-red:#c8362a;
+    --pin-blue:#2f5fa8;
+    --pin-yellow:#e0a814;
+    --pin-green:#3d8b56;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;height:100%;background:#000}
+  body{
+    font-family:'Patrick Hand', 'Caveat', cursive;
+    color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+  }
+  .tv{
+    width:1920px;height:1080px;margin:0 auto;position:relative;overflow:hidden;
+    /* cork board */
+    background:
+      radial-gradient(rgba(255,220,170,.06) 0.8px, transparent 1.2px) 0 0/4px 4px,
+      radial-gradient(rgba(60,30,10,.18) 0.8px, transparent 1.2px) 2px 2px/5px 5px,
+      radial-gradient(rgba(255,255,255,.05) 1px, transparent 1.5px) 1px 3px/7px 7px,
+      radial-gradient(ellipse at 50% 0%, rgba(255,210,150,.18), transparent 60%),
+      radial-gradient(ellipse at 50% 100%, rgba(60,30,10,.35), transparent 65%),
+      linear-gradient(160deg, var(--cork-light) 0%, var(--cork) 45%, var(--cork-dark) 100%);
+  }
+  @media (max-width:1920px){.tv{transform:scale(calc(100vw/1920));transform-origin:top left}}
+  @media (max-height:1080px) and (min-width:1920px){.tv{transform:scale(calc(100vh/1080));transform-origin:top left}}
+
+  /* wooden frame */
+  .tv::before{
+    content:"";position:absolute;inset:0;pointer-events:none;
+    border:22px solid #4a2f17;
+    border-image: linear-gradient(160deg, #6b4524, #3a2210 40%, #6b4524 70%, #2c1a08 100%) 1;
+    box-shadow:
+      inset 0 0 0 2px #2c1a08,
+      inset 0 0 80px rgba(0,0,0,.4),
+      inset 0 0 240px rgba(0,0,0,.25);
+  }
+
+  /* ────────── chalkboard header ────────── */
+  .header{
+    position:absolute;left:60px;top:46px;
+    width:1800px;height:170px;
+    background:
+      radial-gradient(ellipse at 30% 30%, rgba(255,255,255,.03), transparent 50%),
+      linear-gradient(180deg, #1d2a22 0%, #14201a 100%);
+    border:6px solid #5a3a1c;
+    border-radius:8px;
+    box-shadow:
+      0 14px 24px rgba(0,0,0,.45),
+      inset 0 0 60px rgba(0,0,0,.4),
+      inset 0 0 200px rgba(255,255,255,.025);
+    color:#f3eede;
+    padding:18px 32px;
+    display:grid;
+    grid-template-columns: 1.5fr 1fr 0.9fr;
+    align-items:center;
+    gap:28px;
+    transform:rotate(-0.6deg);
+  }
+  .header::before{
+    /* chalk dust */
+    content:"";position:absolute;inset:0;border-radius:4px;pointer-events:none;
+    background:
+      radial-gradient(rgba(255,255,255,.06) 0.5px, transparent 1px) 0 0/3px 3px,
+      radial-gradient(rgba(255,255,255,.04) 0.5px, transparent 1px) 1px 2px/5px 5px;
+    mix-blend-mode:screen;opacity:.5;
+  }
+  .header .title{
+    font-family:'Caveat', cursive;
+    font-weight:700;
+    font-size:96px;line-height:.9;
+    color:#fff8e2;
+    letter-spacing:.01em;
+    text-shadow:0 1px 0 rgba(0,0,0,.5);
+  }
+  .header .title small{
+    display:block;
+    font-family:'Patrick Hand', cursive;
+    font-size:28px;color:#e7d8a4;letter-spacing:.06em;
+    margin-top:-4px;
+  }
+  .header .date{
+    font-family:'Patrick Hand', cursive;
+    font-size:50px;color:#fff;line-height:1;
+    letter-spacing:.02em;
+    text-align:center;
+    border-top:1px dashed rgba(255,255,255,.25);
+    border-bottom:1px dashed rgba(255,255,255,.25);
+    padding:10px 0;
+  }
+  .header .date small{
+    display:block;font-size:22px;color:#e0d6a4;margin-top:6px;font-family:'Special Elite',monospace;letter-spacing:.18em;
+  }
+  .header .weather{
+    display:grid;
+    grid-template-columns: auto 1fr;
+    gap:18px;
+    align-items:center;
+    justify-content:end;
+  }
+  .header .weather .icon{
+    width:78px;height:78px;border-radius:50%;
+    background: radial-gradient(circle at 35% 30%, #ffe89a 0%, #fbb53a 60%, #c87a14 100%);
+    box-shadow:0 0 24px rgba(251,181,58,.5);
+    position:relative;
+  }
+  .header .weather .icon::after{
+    content:"";position:absolute;left:-12px;bottom:-6px;width:54px;height:30px;border-radius:30px;
+    background:rgba(245,237,222,.8);
+    box-shadow:18px -6px 0 -2px rgba(245,237,222,.7);
+  }
+  .header .weather .read{font-family:'Patrick Hand',cursive}
+  .header .weather .temp{
+    font-family:'Caveat',cursive;font-weight:700;font-size:74px;color:#fff;line-height:.9;
+  }
+  .header .weather .cond{font-size:22px;color:#e7d8a4;letter-spacing:.04em;line-height:1.1}
+  .header .weather .extra{font-size:18px;color:#bfb27c;letter-spacing:.06em}
+  /* chalkboard tape corner */
+  .tape{
+    position:absolute;width:130px;height:30px;
+    background:repeating-linear-gradient(135deg, rgba(255,240,200,.55) 0 8px, rgba(255,240,200,.4) 8px 16px);
+    border:1px solid rgba(255,240,200,.5);
+    box-shadow:0 2px 6px rgba(0,0,0,.35);
+    pointer-events:none;
+  }
+  .header .tape.tl{top:-12px;left:30px;transform:rotate(-10deg)}
+  .header .tape.tr{top:-14px;right:30px;transform:rotate(8deg)}
+
+  /* ────────── notes grid ────────── */
+  .wall{
+    position:absolute;top:236px;left:60px;right:60px;height:620px;
+    display:grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap:28px;
+    padding:30px 8px 30px 8px;
+  }
+  .note{
+    position:relative;
+    padding:22px 24px 24px 24px;
+    background:var(--bg);
+    box-shadow:
+      0 1px 0 var(--bg-edge),
+      0 18px 28px rgba(0,0,0,.45),
+      0 30px 50px rgba(0,0,0,.18);
+    transform: rotate(var(--rot, -1deg));
+    color:var(--ink);
+    font-family:'Patrick Hand', cursive;
+    border-radius:1px;
+    /* paper grain */
+    background-image:
+      radial-gradient(rgba(0,0,0,.04) 0.5px, transparent 1px),
+      linear-gradient(180deg, color-mix(in srgb, var(--bg) 96%, white) 0%, var(--bg) 100%);
+    background-size: 4px 4px, auto;
+  }
+  /* peeled corner */
+  .note::after{
+    content:"";position:absolute;right:0;bottom:0;width:34px;height:34px;
+    background: linear-gradient(135deg, transparent 49.5%, var(--bg-edge) 50%, color-mix(in srgb, var(--bg-edge) 60%, black) 100%);
+    clip-path: polygon(100% 0, 100% 100%, 0 100%);
+    opacity:.7;
+  }
+  /* push-pin */
+  .note .pin{
+    position:absolute;top:-12px;left:50%;transform:translateX(-50%);
+    width:24px;height:24px;border-radius:50%;
+    background: radial-gradient(circle at 30% 30%, #fff 0%, var(--pin) 40%, color-mix(in srgb, var(--pin) 50%, black) 100%);
+    box-shadow:
+      0 4px 0 -1px rgba(0,0,0,.35),
+      0 8px 12px rgba(0,0,0,.5);
+    z-index:3;
+  }
+  .note .pin::after{
+    content:"";position:absolute;left:50%;top:14px;width:2px;height:6px;
+    background:rgba(0,0,0,.4);transform:translateX(-50%);
+  }
+
+  .note[data-c="yellow"]{--bg:var(--note-yellow);--bg-edge:var(--note-yellow-edge);--pin:var(--pin-red)}
+  .note[data-c="pink"]{--bg:var(--note-pink);--bg-edge:var(--note-pink-edge);--pin:var(--pin-blue)}
+  .note[data-c="mint"]{--bg:var(--note-mint);--bg-edge:var(--note-mint-edge);--pin:var(--pin-yellow)}
+  .note[data-c="blue"]{--bg:var(--note-blue);--bg-edge:var(--note-blue-edge);--pin:var(--pin-red)}
+  .note[data-c="peach"]{--bg:var(--note-peach);--bg-edge:var(--note-peach-edge);--pin:var(--pin-green)}
+
+  .note .who{
+    font-family:'Caveat', cursive;
+    font-weight:700;
+    font-size:56px;line-height:.9;
+    color:var(--ink);
+    border-bottom:2px solid rgba(31,26,20,.35);
+    padding-bottom:6px;margin-bottom:6px;
+    display:flex;justify-content:space-between;align-items:baseline;
+  }
+  .note .who .frac{
+    font-family:'Patrick Hand', cursive;
+    font-size:28px;color:var(--ink-soft);
+    letter-spacing:.04em;
+  }
+  .note .progress{
+    height:8px;border-radius:8px;background:rgba(31,26,20,.18);overflow:hidden;margin-bottom:10px;
+    position:relative;
+  }
+  .note .progress i{
+    display:block;height:100%;background:var(--ink);opacity:.55;border-radius:8px;
+  }
+  .note .progress::after{
+    /* hand-drawn squiggle on the bar */
+    content:"";position:absolute;left:0;right:0;top:0;bottom:0;
+    background: repeating-linear-gradient(90deg, transparent 0 6px, rgba(0,0,0,.08) 6px 7px);
+    border-radius:8px;
+  }
+  .note ul{list-style:none;margin:0;padding:0}
+  .note li{
+    display:grid;
+    grid-template-columns: 28px 1fr auto;
+    gap:8px;align-items:start;
+    padding:6px 0;
+    font-size:24px;line-height:1.18;
+    border-bottom:1px dashed rgba(31,26,20,.25);
+  }
+  .note li:last-child{border-bottom:none}
+  .note li .box{
+    width:22px;height:22px;border:2px solid var(--ink);border-radius:4px;
+    display:grid;place-items:center;
+    background:rgba(255,255,255,.35);margin-top:3px;
+  }
+  .note li.done .box::after{
+    content:"";display:block;width:22px;height:22px;
+    background:
+      linear-gradient(45deg, transparent 40%, var(--pin) 41%, var(--pin) 56%, transparent 57%),
+      linear-gradient(-45deg, transparent 40%, var(--pin) 41%, var(--pin) 56%, transparent 57%);
+    transform:scale(1.1) rotate(-6deg);
+  }
+  .note li.done .t{
+    text-decoration: line-through;
+    text-decoration-style: wavy;
+    text-decoration-color: rgba(31,26,20,.5);
+    color:var(--ink-soft);
+  }
+  .note li .tag{
+    font-family:'Special Elite', monospace;
+    font-size:13px;letter-spacing:.18em;color:var(--ink-soft);text-transform:uppercase;
+    align-self:center;
+    padding:2px 6px;border:1px solid rgba(31,26,20,.4);border-radius:2px;
+  }
+  .note li.next{
+    background:linear-gradient(90deg, rgba(255,255,255,.55), transparent 70%);
+    margin:0 -10px;padding:6px 10px;
+    box-shadow:inset 4px 0 0 var(--pin);
+  }
+  .note li small{
+    display:block;font-size:16px;color:var(--ink-soft);font-family:'Patrick Hand',cursive;
+  }
+
+  /* doodle stars / hearts on notes */
+  .doodle{
+    position:absolute;font-family:'Caveat',cursive;font-size:38px;color:var(--ink-soft);
+    transform:rotate(var(--r,-8deg));pointer-events:none;opacity:.6;
+  }
+
+  /* ────────── agenda strip (calendar) ────────── */
+  .agenda{
+    position:absolute;left:60px;right:60px;bottom:60px;height:170px;
+    display:grid;
+    grid-template-columns: 240px 1fr;
+    gap:20px;
+  }
+  .agenda-title{
+    position:relative;
+    background:var(--paper);
+    background-image:
+      linear-gradient(180deg, rgba(0,0,0,.05) 0%, transparent 6%, transparent 94%, rgba(0,0,0,.05) 100%);
+    padding:22px 22px;
+    transform:rotate(-1.4deg);
+    box-shadow:0 14px 22px rgba(0,0,0,.4);
+    /* torn top + bottom */
+    clip-path: polygon(
+      0% 4%, 4% 0%, 12% 6%, 22% 2%, 32% 5%, 44% 1%, 56% 4%, 68% 0%, 80% 5%, 92% 1%, 100% 6%,
+      100% 96%, 94% 100%, 84% 96%, 72% 100%, 60% 96%, 48% 100%, 36% 95%, 24% 100%, 12% 95%, 4% 100%, 0% 94%
+    );
+  }
+  .agenda-title h2{
+    margin:0;
+    font-family:'Caveat',cursive;font-weight:700;font-size:74px;line-height:.85;
+    color:var(--ink);
+  }
+  .agenda-title p{
+    margin:4px 0 0 0;
+    font-family:'Special Elite',monospace;font-size:14px;letter-spacing:.18em;
+    color:var(--ink-soft);text-transform:uppercase;
+  }
+  .agenda-title .twine{
+    position:absolute;top:-20px;left:50%;width:2px;height:30px;background:var(--twine);transform:translateX(-50%) rotate(4deg);
+  }
+  .agenda-title .clip{
+    position:absolute;top:-12px;left:50%;transform:translateX(-50%);
+    width:54px;height:18px;border:2px solid #555;border-radius:8px;background:linear-gradient(180deg,#bbb,#777);
+    box-shadow:0 2px 4px rgba(0,0,0,.4);
+  }
+
+  .agenda-strip{
+    position:relative;
+    background:
+      repeating-linear-gradient(180deg, transparent 0 35px, rgba(31,26,20,.06) 35px 36px),
+      linear-gradient(180deg, #f6efd6 0%, #ebe1bd 100%);
+    border:1px solid rgba(31,26,20,.25);
+    box-shadow:0 14px 22px rgba(0,0,0,.45);
+    padding:14px 16px;
+    transform:rotate(0.4deg);
+    display:grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap:8px;
+    align-items:stretch;
+  }
+  .agenda-strip::before{
+    /* red margin line */
+    content:"";position:absolute;left:60px;top:0;bottom:0;width:1px;background:rgba(180,40,30,.4);
+  }
+  .slot{
+    position:relative;
+    padding:6px 6px 6px 6px;
+    border-left:1px dashed rgba(31,26,20,.25);
+    min-height:130px;
+  }
+  .slot:first-child{border-left:none}
+  .slot .hour{
+    font-family:'Special Elite',monospace;font-size:14px;letter-spacing:.16em;color:var(--ink-soft);
+    text-transform:uppercase;margin-bottom:6px;
+  }
+  .ev{
+    position:absolute;left:6px;right:6px;
+    padding:6px 8px;
+    background:#fff8de;
+    border:1px solid rgba(31,26,20,.3);
+    box-shadow:0 3px 6px rgba(0,0,0,.18);
+    transform:rotate(var(--er,-1deg));
+    font-family:'Patrick Hand',cursive;
+    font-size:18px;line-height:1.1;
+    color:var(--ink);
+  }
+  .ev .when{display:block;font-family:'Special Elite',monospace;font-size:12px;letter-spacing:.12em;color:var(--ink-soft);text-transform:uppercase;margin-bottom:2px}
+  .ev.pink{background:#ffd6e0;border-color:rgba(180,80,100,.4)}
+  .ev.mint{background:#d6efd9;border-color:rgba(40,100,60,.4)}
+  .ev.blue{background:#d4e0fa;border-color:rgba(50,80,150,.4)}
+  .ev.peach{background:#ffd9b5;border-color:rgba(180,110,50,.4)}
+  .ev.now{
+    background:#1f1a14;color:#fff8de;border-color:#1f1a14;
+  }
+  .ev.now .when{color:#ffd86b}
+  .ev.now::after{
+    content:"⌛ NOW";
+    position:absolute;right:-6px;top:-12px;
+    background:#c8362a;color:#fff;
+    font-family:'Special Elite',monospace;font-size:11px;letter-spacing:.18em;
+    padding:2px 6px;transform:rotate(8deg);
+    box-shadow:0 3px 6px rgba(0,0,0,.4);
+  }
+
+  /* polaroid scrap top-right of board (extra) */
+  .scrap{
+    position:absolute;top:32px;right:90px;width:170px;height:80px;
+    background:#fff8de;border:6px solid #fff;
+    box-shadow:0 14px 22px rgba(0,0,0,.5);
+    transform:rotate(6deg);
+    padding:6px 10px;
+    font-family:'Caveat',cursive;font-size:26px;color:var(--ink);line-height:1;
+  }
+  .scrap small{
+    display:block;font-family:'Special Elite',monospace;font-size:11px;letter-spacing:.18em;color:var(--ink-soft);text-transform:uppercase;margin-top:6px;
+  }
+  .scrap .pin{
+    position:absolute;top:-10px;left:50%;transform:translateX(-50%);
+    width:22px;height:22px;border-radius:50%;
+    background: radial-gradient(circle at 30% 30%, #fff 0%, var(--pin-yellow) 40%, #8a6a0c 100%);
+    box-shadow:0 4px 0 -1px rgba(0,0,0,.35), 0 8px 12px rgba(0,0,0,.5);
+  }
+</style>
+</head>
+<body>
+<div class="tv">
+
+  <header class="header">
+    <span class="tape tl"></span>
+    <span class="tape tr"></span>
+    <div class="title">
+      Kinboard
+      <small>~ the kitchen wall ~</small>
+    </div>
+    <div class="date">
+      Tuesday, 26 May
+      <small>WEEK 22 · DAY 147 OF 2026</small>
+    </div>
+    <div class="weather">
+      <div class="icon"></div>
+      <div class="read">
+        <div class="temp">19°</div>
+        <div class="cond">partly cloudy</div>
+        <div class="extra">feels 18° · rain 20%</div>
+      </div>
+    </div>
+  </header>
+
+  <section class="wall">
+
+    <!-- Maeve -->
+    <article class="note" data-c="yellow" style="--rot:-2.2deg">
+      <span class="pin"></span>
+      <div class="who">Maeve <span class="frac">3 of 6</span></div>
+      <div class="progress"><i style="width:50%"></i></div>
+      <ul>
+        <li class="done"><span class="box"></span><span class="t">Make bed &amp; tidy room</span><span class="tag">am</span></li>
+        <li class="done"><span class="box"></span><span class="t">Feed the dog<small>kibble · half scoop</small></span><span class="tag">am</span></li>
+        <li class="done"><span class="box"></span><span class="t">Pack school lunch</span><span class="tag">am</span></li>
+        <li class="next"><span class="box"></span><span class="t">Piano · 20 min<small>scales + new piece ★</small></span><span class="tag">pm</span></li>
+        <li><span class="box"></span><span class="t">Hang out the laundry</span><span class="tag">pm</span></li>
+        <li><span class="box"></span><span class="t">Reading · 30 min</span><span class="tag">eve</span></li>
+      </ul>
+      <span class="doodle" style="right:14px;bottom:10px;--r:6deg">★</span>
+    </article>
+
+    <!-- Felix -->
+    <article class="note" data-c="mint" style="--rot:1.6deg">
+      <span class="pin"></span>
+      <div class="who">Felix <span class="frac">5 of 5 ✓</span></div>
+      <div class="progress"><i style="width:100%"></i></div>
+      <ul>
+        <li class="done"><span class="box"></span><span class="t">Brush teeth (properly!)</span><span class="tag">am</span></li>
+        <li class="done"><span class="box"></span><span class="t">Get dressed for school</span><span class="tag">am</span></li>
+        <li class="done"><span class="box"></span><span class="t">Empty the dishwasher</span><span class="tag">pm</span></li>
+        <li class="done"><span class="box"></span><span class="t">Bins to the kerb<small>recycling night</small></span><span class="tag">eve</span></li>
+        <li class="done"><span class="box"></span><span class="t">Read · 20 minutes</span><span class="tag">eve</span></li>
+      </ul>
+      <span class="doodle" style="left:20px;bottom:8px;--r:-12deg;font-size:46px">all done!</span>
+    </article>
+
+    <!-- Iris -->
+    <article class="note" data-c="pink" style="--rot:-1.2deg">
+      <span class="pin"></span>
+      <div class="who">Iris <span class="frac">2 of 7</span></div>
+      <div class="progress"><i style="width:28%"></i></div>
+      <ul>
+        <li class="done"><span class="box"></span><span class="t">Make bed</span><span class="tag">am</span></li>
+        <li class="done"><span class="box"></span><span class="t">Eat breakfast</span><span class="tag">am</span></li>
+        <li class="next"><span class="box"></span><span class="t">Tidy art corner</span><span class="tag">pm</span></li>
+        <li><span class="box"></span><span class="t">Water the herbs</span><span class="tag">pm</span></li>
+        <li><span class="box"></span><span class="t">Spelling list (Tue)</span><span class="tag">pm</span></li>
+        <li><span class="box"></span><span class="t">Set the table</span><span class="tag">eve</span></li>
+        <li><span class="box"></span><span class="t">PJs by 7:30</span><span class="tag">eve</span></li>
+      </ul>
+    </article>
+
+    <!-- Household -->
+    <article class="note" data-c="blue" style="--rot:2.4deg">
+      <span class="pin"></span>
+      <div class="who">House <span class="frac">1 of 4</span></div>
+      <div class="progress"><i style="width:25%"></i></div>
+      <ul>
+        <li class="done"><span class="box"></span><span class="t">Run the dishwasher</span><span class="tag">am</span></li>
+        <li class="next"><span class="box"></span><span class="t">Hoover downstairs<small>main rooms only</small></span><span class="tag">pm</span></li>
+        <li><span class="box"></span><span class="t">Compost out for collection</span><span class="tag">pm</span></li>
+        <li><span class="box"></span><span class="t">Lights out · 9:30 pm</span><span class="tag">eve</span></li>
+      </ul>
+      <span class="doodle" style="right:14px;bottom:10px;--r:-6deg">♡</span>
+    </article>
+
+  </section>
+
+  <div class="scrap">
+    <span class="pin"></span>
+    Don't forget!
+    <small>bins out tonight</small>
+  </div>
+
+  <section class="agenda">
+    <div class="agenda-title">
+      <span class="clip"></span>
+      <h2>Today's<br>plans</h2>
+      <p>5 things on · Tue 26 May</p>
+    </div>
+    <div class="agenda-strip">
+      <div class="slot">
+        <div class="hour">8 am</div>
+        <div class="ev mint" style="--er:-2deg;top:34px;height:64px"><span class="when">08:00 – 08:30</span>School drop-off</div>
+      </div>
+      <div class="slot"><div class="hour">10 am</div></div>
+      <div class="slot">
+        <div class="hour">12 pm</div>
+        <div class="ev blue" style="--er:1.5deg;top:34px;height:64px"><span class="when">12:30 – 13:30</span>Lunch at Nan's</div>
+      </div>
+      <div class="slot">
+        <div class="hour">2 pm</div>
+        <div class="ev now" style="--er:-3deg;top:34px;height:64px"><span class="when">14:15 – 15:00</span>Dentist · Felix</div>
+      </div>
+      <div class="slot">
+        <div class="hour">4 pm</div>
+        <div class="ev peach" style="--er:2deg;top:34px;height:64px"><span class="when">16:00 – 17:00</span>Piano · Maeve</div>
+      </div>
+      <div class="slot">
+        <div class="hour">6 pm</div>
+        <div class="ev pink" style="--er:-1.5deg;top:34px;height:64px"><span class="when">18:30</span>Dinner together</div>
+      </div>
+      <div class="slot"><div class="hour">8 pm</div></div>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>

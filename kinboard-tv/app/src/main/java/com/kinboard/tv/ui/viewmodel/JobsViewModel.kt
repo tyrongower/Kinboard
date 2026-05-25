@@ -117,8 +117,9 @@ class JobsViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isCalendarLoading = true)
             try {
-                val dateString = _uiState.value.selectedDate.toString()
-                val response = ApiClient.getApi(getApplication()).getCalendarEvents(dateString, dateString)
+                val startString = _uiState.value.selectedDate.toString()
+                val endString = _uiState.value.selectedDate.plusDays(1).toString()
+                val response = ApiClient.getApi(getApplication()).getCalendarEvents(startString, endString)
                 if (response.isSuccessful) {
                     _uiState.value = _uiState.value.copy(
                         calendarEvents = response.body() ?: emptyList(),
@@ -347,7 +348,8 @@ class JobsViewModel(application: Application) : AndroidViewModel(application) {
                 )
             }
 
-            val eventsResponse = ApiClient.getApi(getApplication()).getCalendarEvents(dateString, dateString)
+            val endString = _uiState.value.selectedDate.plusDays(1).toString()
+            val eventsResponse = ApiClient.getApi(getApplication()).getCalendarEvents(dateString, endString)
             if (eventsResponse.isSuccessful) {
                 _uiState.value = _uiState.value.copy(
                     calendarEvents = eventsResponse.body() ?: emptyList()

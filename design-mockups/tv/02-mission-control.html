@@ -1,0 +1,479 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Kinboard TV · OPS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=VT323&family=IBM+Plex+Mono:wght@300;400;500;600;700&family=Major+Mono+Display&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#06080c;
+    --bg-2:#0b1018;
+    --panel:#0e1521;
+    --grid:rgba(120,180,255,.05);
+    --line:rgba(120,180,255,.18);
+    --line-soft:rgba(120,180,255,.08);
+    --amber:#ffb627;
+    --amber-soft:#7a5512;
+    --cyan:#3ddcff;
+    --cyan-soft:#0e6779;
+    --green:#3df09f;
+    --magenta:#ff4dc9;
+    --red:#ff3b47;
+    --ink:#dfe7f5;
+    --ink-mute:#7d8aa3;
+    --ink-dim:#3f4a63;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;height:100%;background:#000}
+  body{font-family:'IBM Plex Mono', ui-monospace, monospace;color:var(--ink);-webkit-font-smoothing:antialiased}
+  .tv{
+    width:1920px;height:1080px;margin:0 auto;position:relative;overflow:hidden;
+    background:
+      radial-gradient(ellipse at 50% 0%, rgba(61,220,255,.05), transparent 60%),
+      radial-gradient(ellipse at 50% 100%, rgba(255,182,39,.04), transparent 55%),
+      linear-gradient(180deg, #06080c 0%, #050810 60%, #04060a 100%);
+  }
+  @media (max-width:1920px){.tv{transform:scale(calc(100vw/1920));transform-origin:top left}}
+  @media (max-height:1080px) and (min-width:1920px){.tv{transform:scale(calc(100vh/1080));transform-origin:top left}}
+
+  /* grid + scanline atmosphere */
+  .tv::before{
+    content:"";position:absolute;inset:0;pointer-events:none;
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 80px 80px, 80px 80px;
+    mask-image: radial-gradient(ellipse at center, black 40%, transparent 100%);
+  }
+  .tv::after{
+    content:"";position:absolute;inset:0;pointer-events:none;
+    background: repeating-linear-gradient(
+      to bottom, rgba(255,255,255,.012) 0 1px, transparent 1px 3px
+    );
+    mix-blend-mode:overlay;
+  }
+
+  /* ──────── top status bar ──────── */
+  .topbar{
+    position:relative;z-index:2;
+    height:54px;
+    display:grid;
+    grid-template-columns: 280px 1fr auto auto;
+    align-items:center;
+    border-bottom:1px solid var(--line);
+    padding:0 28px;
+    font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-mute);
+    gap:24px;
+    background:linear-gradient(180deg, rgba(61,220,255,.04), transparent);
+  }
+  .logo{
+    display:flex;align-items:center;gap:12px;color:var(--amber);
+    font-family:'Major Mono Display', monospace;
+    font-size:22px;letter-spacing:.06em;
+  }
+  .logo .dot{width:10px;height:10px;border-radius:50%;background:var(--amber);box-shadow:0 0 14px var(--amber)}
+  .topbar .crumbs{display:flex;gap:32px}
+  .topbar .crumbs span b{color:var(--ink);font-weight:500}
+  .topbar .pill{
+    border:1px solid var(--line);padding:6px 12px;border-radius:2px;color:var(--ink);
+    display:flex;align-items:center;gap:8px;
+  }
+  .topbar .pill.green::before{content:"";width:8px;height:8px;background:var(--green);border-radius:50%;box-shadow:0 0 10px var(--green)}
+  .clock{
+    font-family:'VT323', monospace;font-size:34px;letter-spacing:.06em;color:var(--amber);
+    line-height:1;
+  }
+
+  /* ──────── main grid ──────── */
+  .main{
+    position:relative;z-index:2;
+    display:grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
+    grid-template-rows: 1fr;
+    gap:18px;
+    padding:18px 28px 12px 28px;
+    height:calc(1080px - 54px - 220px);
+  }
+
+  /* station card */
+  .station{
+    position:relative;
+    background:linear-gradient(180deg, var(--panel) 0%, #0a1019 100%);
+    border:1px solid var(--line);
+    border-radius:2px;
+    padding:0;
+    display:flex;flex-direction:column;
+    overflow:hidden;
+  }
+  .station::before{
+    content:"";position:absolute;left:0;right:0;top:0;height:2px;
+    background:linear-gradient(90deg, var(--accent), transparent);
+  }
+  .station[data-c="amber"]{--accent:var(--amber)}
+  .station[data-c="cyan"]{--accent:var(--cyan)}
+  .station[data-c="magenta"]{--accent:var(--magenta)}
+  .station[data-c="green"]{--accent:var(--green)}
+  .station[data-c="red"]{--accent:var(--red)}
+
+  /* console-corner brackets */
+  .station > .bracket{position:absolute;width:14px;height:14px;border:1px solid var(--accent);pointer-events:none}
+  .bracket.tl{top:6px;left:6px;border-right:none;border-bottom:none}
+  .bracket.tr{top:6px;right:6px;border-left:none;border-bottom:none}
+  .bracket.bl{bottom:6px;left:6px;border-right:none;border-top:none}
+  .bracket.br{bottom:6px;right:6px;border-left:none;border-top:none}
+
+  .st-head{
+    display:grid;grid-template-columns: 1fr auto;align-items:center;
+    padding:16px 18px 10px 18px;gap:10px;
+    border-bottom:1px dashed var(--line);
+  }
+  .st-name{
+    font-family:'Major Mono Display', monospace;
+    font-size:30px;letter-spacing:.04em;color:var(--accent);
+    text-shadow:0 0 18px color-mix(in srgb, var(--accent) 60%, transparent);
+    line-height:1;
+  }
+  .st-sub{
+    font-size:11px;letter-spacing:.22em;color:var(--ink-mute);text-transform:uppercase;
+    margin-top:6px;
+  }
+  .st-id{
+    text-align:right;
+    font-size:10px;letter-spacing:.2em;color:var(--ink-mute);text-transform:uppercase;
+  }
+  .st-id .code{
+    display:block;font-family:'VT323', monospace;font-size:30px;color:var(--ink);letter-spacing:.06em;
+    line-height:.9;
+  }
+
+  /* progress strip */
+  .progress{
+    display:grid;grid-template-columns: 1fr auto;gap:12px;align-items:center;
+    padding:12px 18px;
+    border-bottom:1px dashed var(--line);
+  }
+  .bar{
+    height:6px;background:#0a121d;border:1px solid var(--line);border-radius:1px;position:relative;overflow:hidden;
+  }
+  .bar i{
+    position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 60%, transparent));
+    box-shadow:0 0 12px var(--accent);
+  }
+  .frac{
+    font-family:'VT323', monospace;color:var(--accent);font-size:26px;letter-spacing:.06em;line-height:1;
+  }
+
+  /* manifest list */
+  .manifest{
+    flex:1;padding:8px 6px;overflow:hidden;
+  }
+  .row{
+    display:grid;
+    grid-template-columns: 24px 56px 1fr 70px;
+    gap:8px;align-items:center;
+    padding:8px 12px;
+    font-size:14px;
+    border-bottom:1px solid var(--line-soft);
+  }
+  .row .n{font-family:'VT323',monospace;font-size:18px;color:var(--ink-dim);line-height:1}
+  .row .time{font-family:'VT323',monospace;font-size:18px;color:var(--ink-mute);letter-spacing:.04em;line-height:1}
+  .row .label{color:var(--ink);font-size:15px;letter-spacing:.02em}
+  .row .label small{display:block;font-size:11px;color:var(--ink-mute);letter-spacing:.08em;margin-top:2px;text-transform:uppercase}
+  .row .status{
+    text-align:right;font-size:10px;letter-spacing:.22em;
+    color:var(--ink-mute);text-transform:uppercase;
+  }
+  .row.done .label{color:var(--ink-dim);text-decoration:line-through;text-decoration-color:rgba(125,138,163,.4)}
+  .row.done .status{color:var(--green)}
+  .row.queued .status{color:var(--amber)}
+  .row.next{
+    background:linear-gradient(90deg, color-mix(in srgb, var(--accent) 14%, transparent), transparent);
+    border-left:2px solid var(--accent);
+    padding-left:10px;
+  }
+  .row.next .status{color:var(--accent)}
+  .row.next .label{color:#fff}
+  .row.focus{
+    background:color-mix(in srgb, var(--accent) 22%, transparent);
+    outline:1px solid var(--accent);
+    box-shadow:inset 0 0 24px color-mix(in srgb, var(--accent) 30%, transparent), 0 0 16px color-mix(in srgb, var(--accent) 40%, transparent);
+  }
+
+  /* ──────── bottom row: departures + telemetry ──────── */
+  .bottom{
+    position:relative;z-index:2;
+    display:grid;
+    grid-template-columns: 1.5fr 1fr;
+    gap:18px;
+    padding:0 28px 28px 28px;
+    height:220px;
+  }
+  .panel{
+    background:linear-gradient(180deg, var(--panel) 0%, #08101a 100%);
+    border:1px solid var(--line);border-radius:2px;
+    position:relative;overflow:hidden;
+  }
+  .panel-head{
+    display:grid;grid-template-columns: 1fr auto;align-items:center;
+    padding:10px 18px;border-bottom:1px dashed var(--line);
+  }
+  .panel-head h2{
+    margin:0;font-family:'Major Mono Display',monospace;
+    font-size:18px;letter-spacing:.06em;color:var(--cyan);
+    text-shadow:0 0 14px rgba(61,220,255,.5);
+  }
+  .panel-head .sub{font-size:10px;letter-spacing:.22em;color:var(--ink-mute);text-transform:uppercase}
+
+  /* departure board */
+  .board{padding:6px 0}
+  .board .dep{
+    display:grid;
+    grid-template-columns: 100px 1fr 200px 110px 80px;
+    gap:10px;align-items:center;
+    padding:8px 18px;
+    border-bottom:1px solid var(--line-soft);
+    font-size:15px;
+  }
+  .board .dep .t{
+    font-family:'VT323',monospace;font-size:30px;color:var(--amber);letter-spacing:.05em;line-height:1;
+    text-shadow:0 0 10px rgba(255,182,39,.55);
+  }
+  .board .dep .name{color:var(--ink);font-weight:500;letter-spacing:.02em}
+  .board .dep .gate{
+    color:var(--ink-mute);font-size:12px;letter-spacing:.22em;text-transform:uppercase;
+  }
+  .board .dep .gate b{color:var(--cyan);font-weight:500}
+  .board .dep .who{
+    font-size:11px;letter-spacing:.18em;color:var(--ink-mute);text-transform:uppercase;
+  }
+  .board .dep .stat{
+    text-align:right;font-family:'VT323',monospace;font-size:18px;letter-spacing:.08em;
+    color:var(--green);
+  }
+  .board .dep.now{
+    background:linear-gradient(90deg, rgba(61,220,255,.1), transparent);
+    border-left:2px solid var(--cyan);padding-left:16px;
+  }
+  .board .dep.now .stat{color:var(--cyan)}
+  .board .dep.now::after{
+    content:"";position:absolute;
+  }
+  .board .dep.past .t{color:var(--ink-dim);text-shadow:none}
+  .board .dep.past .name{color:var(--ink-dim)}
+  .board .dep.past .stat{color:var(--ink-dim)}
+
+  /* telemetry / weather panel */
+  .telem{
+    display:grid;grid-template-rows: auto 1fr;
+  }
+  .telem-body{
+    display:grid;grid-template-columns: 1.1fr 1.4fr;gap:0;height:100%;
+  }
+  .telem-now{
+    border-right:1px dashed var(--line);
+    padding:14px 18px;display:flex;flex-direction:column;justify-content:center;
+  }
+  .temp{
+    font-family:'VT323',monospace;
+    font-size:84px;line-height:.85;color:var(--amber);letter-spacing:.02em;
+    text-shadow:0 0 22px rgba(255,182,39,.55);
+  }
+  .temp sup{font-size:36px;color:var(--amber-soft)}
+  .telem-now .cond{
+    margin-top:4px;font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-mute);
+  }
+  .telem-now .feels{font-size:12px;color:var(--ink-dim);letter-spacing:.16em;margin-top:6px}
+
+  .forecast{
+    display:grid;grid-template-columns: repeat(3,1fr);gap:0;
+  }
+  .fday{
+    border-left:1px dashed var(--line);
+    padding:10px 12px;display:flex;flex-direction:column;justify-content:center;gap:4px;
+  }
+  .fday:first-child{border-left:none}
+  .fday .d{font-size:11px;letter-spacing:.22em;color:var(--ink-mute);text-transform:uppercase}
+  .fday .hi{font-family:'VT323',monospace;font-size:30px;color:var(--ink);line-height:1}
+  .fday .lo{font-family:'VT323',monospace;font-size:18px;color:var(--ink-dim);line-height:1}
+  .fday .rain{font-size:11px;letter-spacing:.18em;color:var(--cyan)}
+
+  /* footer ticker */
+  .ticker{
+    position:absolute;left:0;right:0;bottom:0;height:26px;
+    border-top:1px solid var(--line);
+    background:#040608;
+    display:flex;align-items:center;gap:32px;
+    padding:0 28px;
+    font-size:11px;letter-spacing:.22em;color:var(--ink-mute);text-transform:uppercase;
+    overflow:hidden;white-space:nowrap;z-index:3;
+  }
+  .ticker b{color:var(--amber)}
+  .ticker .sep{color:var(--ink-dim)}
+</style>
+</head>
+<body>
+<div class="tv">
+
+  <header class="topbar">
+    <div class="logo"><span class="dot"></span>KINBOARD · OPS</div>
+    <div class="crumbs">
+      <span>SHIFT <b>TUE 26 MAY 26</b></span>
+      <span>STA. <b>HOUSE-01</b></span>
+      <span>OPS DAY <b>147 / 365</b></span>
+    </div>
+    <div class="pill green">ALL SYSTEMS NOMINAL</div>
+    <div class="clock">07:42:18</div>
+  </header>
+
+  <section class="main">
+
+    <!-- STATION 01 -->
+    <article class="station" data-c="amber">
+      <span class="bracket tl"></span><span class="bracket tr"></span><span class="bracket bl"></span><span class="bracket br"></span>
+      <div class="st-head">
+        <div>
+          <div class="st-name">MAEVE</div>
+          <div class="st-sub">STATION 01 · DAY CREW</div>
+        </div>
+        <div class="st-id">CALLSIGN<span class="code">M-01</span></div>
+      </div>
+      <div class="progress"><div class="bar"><i style="width:50%"></i></div><div class="frac">03/06</div></div>
+      <div class="manifest">
+        <div class="row done"><span class="n">01</span><span class="time">06:30</span><span class="label">MAKE BED &amp; TIDY ROOM</span><span class="status">DONE</span></div>
+        <div class="row done"><span class="n">02</span><span class="time">07:10</span><span class="label">FEED DOG<small>kibble · 0.5 scoop</small></span><span class="status">DONE</span></div>
+        <div class="row done"><span class="n">03</span><span class="time">07:25</span><span class="label">PACK SCHOOL LUNCH</span><span class="status">DONE</span></div>
+        <div class="row next focus"><span class="n">04</span><span class="time">16:00</span><span class="label">PIANO PRACTICE<small>20 minutes · scales + piece</small></span><span class="status">NEXT</span></div>
+        <div class="row queued"><span class="n">05</span><span class="time">17:30</span><span class="label">HANG OUT LAUNDRY</span><span class="status">QUEUED</span></div>
+        <div class="row queued"><span class="n">06</span><span class="time">19:30</span><span class="label">READING · 30 MIN</span><span class="status">QUEUED</span></div>
+      </div>
+    </article>
+
+    <!-- STATION 02 -->
+    <article class="station" data-c="cyan">
+      <span class="bracket tl"></span><span class="bracket tr"></span><span class="bracket bl"></span><span class="bracket br"></span>
+      <div class="st-head">
+        <div>
+          <div class="st-name">FELIX</div>
+          <div class="st-sub">STATION 02 · SHIFT COMPLETE</div>
+        </div>
+        <div class="st-id">CALLSIGN<span class="code">F-02</span></div>
+      </div>
+      <div class="progress"><div class="bar"><i style="width:100%"></i></div><div class="frac">05/05</div></div>
+      <div class="manifest">
+        <div class="row done"><span class="n">01</span><span class="time">06:45</span><span class="label">BRUSH TEETH</span><span class="status">DONE</span></div>
+        <div class="row done"><span class="n">02</span><span class="time">07:00</span><span class="label">DRESSED FOR SCHOOL</span><span class="status">DONE</span></div>
+        <div class="row done"><span class="n">03</span><span class="time">16:30</span><span class="label">EMPTY DISHWASHER</span><span class="status">DONE</span></div>
+        <div class="row done"><span class="n">04</span><span class="time">18:00</span><span class="label">BINS TO KERB<small>recycling night</small></span><span class="status">DONE</span></div>
+        <div class="row done"><span class="n">05</span><span class="time">19:30</span><span class="label">READING · 20 MIN</span><span class="status">DONE</span></div>
+      </div>
+    </article>
+
+    <!-- STATION 03 -->
+    <article class="station" data-c="magenta">
+      <span class="bracket tl"></span><span class="bracket tr"></span><span class="bracket bl"></span><span class="bracket br"></span>
+      <div class="st-head">
+        <div>
+          <div class="st-name">IRIS</div>
+          <div class="st-sub">STATION 03 · DAY CREW</div>
+        </div>
+        <div class="st-id">CALLSIGN<span class="code">I-03</span></div>
+      </div>
+      <div class="progress"><div class="bar"><i style="width:28%"></i></div><div class="frac">02/07</div></div>
+      <div class="manifest">
+        <div class="row done"><span class="n">01</span><span class="time">07:00</span><span class="label">MAKE BED</span><span class="status">DONE</span></div>
+        <div class="row done"><span class="n">02</span><span class="time">07:30</span><span class="label">EAT BREAKFAST</span><span class="status">DONE</span></div>
+        <div class="row next"><span class="n">03</span><span class="time">15:30</span><span class="label">TIDY ART CORNER</span><span class="status">NEXT</span></div>
+        <div class="row queued"><span class="n">04</span><span class="time">16:30</span><span class="label">WATER HERBS</span><span class="status">QUEUED</span></div>
+        <div class="row queued"><span class="n">05</span><span class="time">17:00</span><span class="label">SPELLING PRACTICE<small>tuesday list</small></span><span class="status">QUEUED</span></div>
+        <div class="row queued"><span class="n">06</span><span class="time">18:15</span><span class="label">SET THE TABLE</span><span class="status">QUEUED</span></div>
+        <div class="row queued"><span class="n">07</span><span class="time">19:30</span><span class="label">PYJAMAS BY 7:30</span><span class="status">QUEUED</span></div>
+      </div>
+    </article>
+
+    <!-- STATION 04 -->
+    <article class="station" data-c="green">
+      <span class="bracket tl"></span><span class="bracket tr"></span><span class="bracket bl"></span><span class="bracket br"></span>
+      <div class="st-head">
+        <div>
+          <div class="st-name">DAD</div>
+          <div class="st-sub">STATION 04 · NIGHT CREW</div>
+        </div>
+        <div class="st-id">CALLSIGN<span class="code">D-04</span></div>
+      </div>
+      <div class="progress"><div class="bar"><i style="width:67%"></i></div><div class="frac">02/03</div></div>
+      <div class="manifest">
+        <div class="row done"><span class="n">01</span><span class="time">06:00</span><span class="label">MAKE COFFEE &amp; LUNCHES</span><span class="status">DONE</span></div>
+        <div class="row done"><span class="n">02</span><span class="time">08:00</span><span class="label">SCHOOL DROP-OFF</span><span class="status">DONE</span></div>
+        <div class="row next"><span class="n">03</span><span class="time">17:30</span><span class="label">COOK DINNER<small>spaghetti bolognaise</small></span><span class="status">NEXT</span></div>
+      </div>
+    </article>
+
+    <!-- STATION 05 -->
+    <article class="station" data-c="red">
+      <span class="bracket tl"></span><span class="bracket tr"></span><span class="bracket bl"></span><span class="bracket br"></span>
+      <div class="st-head">
+        <div>
+          <div class="st-name">SHARED</div>
+          <div class="st-sub">STATION 00 · HOUSE OPS</div>
+        </div>
+        <div class="st-id">CALLSIGN<span class="code">H-00</span></div>
+      </div>
+      <div class="progress"><div class="bar"><i style="width:25%"></i></div><div class="frac">01/04</div></div>
+      <div class="manifest">
+        <div class="row done"><span class="n">01</span><span class="time">07:00</span><span class="label">RUN DISHWASHER</span><span class="status">DONE</span></div>
+        <div class="row queued"><span class="n">02</span><span class="time">16:00</span><span class="label">HOOVER DOWNSTAIRS</span><span class="status">QUEUED</span></div>
+        <div class="row queued"><span class="n">03</span><span class="time">18:00</span><span class="label">COMPOST → KERB</span><span class="status">QUEUED</span></div>
+        <div class="row queued"><span class="n">04</span><span class="time">21:30</span><span class="label">LIGHTS OUT</span><span class="status">QUEUED</span></div>
+      </div>
+    </article>
+
+  </section>
+
+  <section class="bottom">
+    <div class="panel">
+      <div class="panel-head">
+        <h2>UPCOMING DEPARTURES</h2>
+        <div class="sub">TUE 26 MAY · 05 EVENTS</div>
+      </div>
+      <div class="board">
+        <div class="dep past"><span class="t">08:00</span><span class="name">School drop-off</span><span class="gate">GATE <b>FRONT&nbsp;DOOR</b></span><span class="who">FELIX · IRIS</span><span class="stat">CLEARED</span></div>
+        <div class="dep past"><span class="t">12:30</span><span class="name">Lunch with Nan</span><span class="gate">GATE <b>NAN'S</b></span><span class="who">FAMILY</span><span class="stat">CLEARED</span></div>
+        <div class="dep now"><span class="t">14:15</span><span class="name">Dentist appointment</span><span class="gate">GATE <b>DR.&nbsp;BRIGHT</b></span><span class="who">FELIX</span><span class="stat">BOARDING</span></div>
+        <div class="dep"><span class="t">16:00</span><span class="name">Piano lesson</span><span class="gate">GATE <b>STUDIO&nbsp;2</b></span><span class="who">MAEVE</span><span class="stat">SCHEDULED</span></div>
+        <div class="dep"><span class="t">18:30</span><span class="name">Dinner together</span><span class="gate">GATE <b>KITCHEN</b></span><span class="who">FAMILY</span><span class="stat">SCHEDULED</span></div>
+      </div>
+    </div>
+    <div class="panel telem">
+      <div class="panel-head">
+        <h2>ATMOSPHERIC TELEMETRY</h2>
+        <div class="sub">LIVE · WGTN</div>
+      </div>
+      <div class="telem-body">
+        <div class="telem-now">
+          <div class="temp">19<sup>°C</sup></div>
+          <div class="cond">PARTLY CLOUDY · WIND NW 8</div>
+          <div class="feels">FEELS 18° · HUMIDITY 64%</div>
+        </div>
+        <div class="forecast">
+          <div class="fday"><span class="d">WED</span><span class="hi">21°</span><span class="lo">12°</span><span class="rain">↓ 10%</span></div>
+          <div class="fday"><span class="d">THU</span><span class="hi">17°</span><span class="lo">09°</span><span class="rain">↓ 60%</span></div>
+          <div class="fday"><span class="d">FRI</span><span class="hi">15°</span><span class="lo">08°</span><span class="rain">↓ 80%</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="ticker">
+    <span><b>► BROADCAST</b></span>
+    <span>BIN NIGHT TONIGHT · RECYCLING <span class="sep">//</span></span>
+    <span>PIANO LESSON MOVED TO 16:00 <span class="sep">//</span></span>
+    <span>RAIN INBOUND THU AM — HANG LAUNDRY EARLY <span class="sep">//</span></span>
+    <span>BOOK CLUB FRIDAY 19:30 <span class="sep">//</span></span>
+    <span>★ FELIX COMPLETED ALL TASKS</span>
+  </div>
+
+</div>
+</body>
+</html>

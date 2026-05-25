@@ -42,13 +42,25 @@ data class HideCompletedResponse(
 data class SiteSettings(
     @SerializedName("id")
     val id: Int,
-    
+
     @SerializedName("defaultView")
-    val defaultView: String,  // "Day" | "Week" | "Month"
-    
+    val defaultView: String,
+
     @SerializedName("completionMode")
-    val completionMode: String? = null,  // "Today" | "VisibleRange" | null
-    
-    @SerializedName("jobsRefreshSeconds")
-    val jobsRefreshSeconds: Int? = null
+    val completionMode: String? = null,
+
+    @SerializedName("choresRefreshSeconds")
+    val choresRefreshSeconds: Int? = null,
+
+    @SerializedName("calendarRefreshSeconds")
+    val calendarRefreshSeconds: Int? = null,
+
+    @SerializedName("weatherRefreshSeconds")
+    val weatherRefreshSeconds: Int? = null,
+
+    @SerializedName("weatherLocation")
+    val weatherLocation: String? = null,
+
+    @SerializedName("schoolStartTime")
+    val schoolStartTime: String? = null
 )

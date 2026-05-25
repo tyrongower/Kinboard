@@ -28,7 +28,7 @@ import java.util.Locale
 
 private const val PANEL_PERSON_ID = -100
 private const val PANEL_CALENDAR_ID = -101
-private val PERSON_CARD_WIDTH = 380.dp
+private val PERSON_CARD_WIDTH = 342.dp
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable

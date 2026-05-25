@@ -1,0 +1,453 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Kinboard TV · The Daily Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,600;9..144,800;9..144,900&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f1ebdd;
+    --paper-2:#e9e0cc;
+    --ink:#171311;
+    --ink-soft:#3b332e;
+    --ink-mute:#7a6f64;
+    --rule:#1c1916;
+    --accent:#b9311f;
+    --ochre:#a87529;
+    --moss:#4d6a3e;
+    --azure:#2f4b7c;
+    --stamp:#7a3220;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;height:100%;background:#000}
+  body{
+    font-family:'Newsreader', Georgia, serif;
+    color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+  }
+  .tv{
+    width:1920px;
+    height:1080px;
+    margin:0 auto;
+    background:
+      radial-gradient(ellipse at 20% -10%, rgba(184,140,90,.12), transparent 50%),
+      radial-gradient(ellipse at 110% 110%, rgba(80,60,40,.18), transparent 55%),
+      var(--paper);
+    position:relative;
+    overflow:hidden;
+    /* paper grain */
+    background-image:
+      radial-gradient(rgba(40,30,20,.045) 1px, transparent 1.4px),
+      radial-gradient(rgba(40,30,20,.035) 1px, transparent 1.2px),
+      radial-gradient(ellipse at 20% -10%, rgba(184,140,90,.12), transparent 50%),
+      radial-gradient(ellipse at 110% 110%, rgba(80,60,40,.18), transparent 55%),
+      linear-gradient(var(--paper),var(--paper));
+    background-size: 3px 3px, 7px 7px, auto, auto, auto;
+    background-position: 0 0, 1px 1px, 0 0, 0 0, 0 0;
+  }
+  /* zoom-to-fit any monitor */
+  @media (max-width:1920px){
+    .tv{transform:scale(calc(100vw / 1920));transform-origin:top left}
+  }
+  @media (max-height:1080px) and (min-width:1920px){
+    .tv{transform:scale(calc(100vh / 1080));transform-origin:top left}
+  }
+
+  /* ────────── masthead ────────── */
+  .masthead{
+    padding:36px 72px 18px 72px;
+    border-bottom:2px solid var(--rule);
+    position:relative;
+  }
+  .masthead::after{
+    content:"";position:absolute;left:72px;right:72px;bottom:-8px;height:1px;background:var(--rule);
+  }
+  .vol-row{
+    display:flex;justify-content:space-between;align-items:flex-end;
+    font-family:'JetBrains Mono', monospace;
+    font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-soft);
+    margin-bottom:6px;
+  }
+  .vol-row .right{display:flex;gap:28px;align-items:center}
+  .title{
+    font-family:'Fraunces', serif;
+    font-weight:900;
+    font-variation-settings: "opsz" 144;
+    font-size:148px;
+    line-height:.84;
+    letter-spacing:-0.04em;
+    margin:0;
+    color:var(--ink);
+    font-style:italic;
+  }
+  .title .amp{color:var(--accent);font-style:italic}
+  .dateline{
+    margin-top:14px;
+    display:flex;justify-content:space-between;align-items:baseline;
+    font-family:'Fraunces', serif;
+    font-size:22px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-soft);
+  }
+  .dateline .weather{
+    font-family:'JetBrains Mono', monospace;
+    font-size:14px;
+    letter-spacing:.16em;
+    color:var(--ink-soft);
+    display:flex;gap:18px;align-items:center;
+  }
+  .weather .temp{
+    font-family:'Fraunces', serif;
+    font-size:34px;font-weight:600;font-style:italic;
+    color:var(--ink);letter-spacing:-.02em;
+  }
+  .weather .seal{
+    width:46px;height:46px;border:1.5px solid var(--ink);border-radius:50%;
+    display:grid;place-items:center;
+    font-size:11px;text-align:center;line-height:1;
+    color:var(--ink);
+    font-family:'Fraunces', serif;letter-spacing:.04em;
+  }
+
+  /* ────────── columns grid ────────── */
+  .columns{
+    padding:24px 72px 24px 72px;
+    display:grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap:0;
+    height:760px;
+  }
+  .col{
+    padding:18px 26px 18px 26px;
+    position:relative;
+  }
+  .col + .col{
+    border-left:1px solid var(--rule);
+  }
+  .col-head{
+    display:flex;justify-content:space-between;align-items:flex-end;
+    padding-bottom:10px;border-bottom:1px solid var(--rule);
+    margin-bottom:14px;
+  }
+  .col-name{
+    font-family:'Fraunces', serif;
+    font-size:36px;font-weight:800;line-height:1;
+    font-variation-settings: "opsz" 144;
+    letter-spacing:-.01em;
+    color:var(--ink);
+    text-transform:uppercase;
+  }
+  .col-meta{
+    font-family:'JetBrains Mono', monospace;
+    font-size:13px;letter-spacing:.12em;color:var(--ink-mute);
+    text-align:right;
+  }
+  .col-meta .frac{
+    display:block;
+    font-family:'Fraunces', serif;
+    font-size:30px;font-weight:600;font-style:italic;
+    color:var(--accent);letter-spacing:-.02em;line-height:1;
+    margin-bottom:4px;
+  }
+  .job{
+    display:grid;
+    grid-template-columns: 22px 1fr auto;
+    gap:10px;
+    padding:9px 0;
+    border-bottom:1px dotted rgba(28,25,22,.28);
+    align-items:baseline;
+    font-family:'Newsreader', serif;
+  }
+  .job .mark{
+    font-family:'Fraunces', serif;
+    font-weight:800;font-style:italic;
+    font-size:22px;line-height:1;color:var(--accent);
+  }
+  .job .t{
+    font-size:22px;line-height:1.18;color:var(--ink);
+    font-variation-settings:"opsz" 18;
+  }
+  .job .t small{
+    display:block;font-size:14px;color:var(--ink-mute);font-style:italic;margin-top:2px;
+  }
+  .job .tag{
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;letter-spacing:.18em;
+    color:var(--ink-mute);text-transform:uppercase;
+    padding:2px 6px;
+    border:1px solid rgba(28,25,22,.35);
+    border-radius:1px;
+    align-self:center;
+  }
+  .job.done .t{
+    color:var(--ink-mute);
+    text-decoration:line-through;text-decoration-thickness:1px;text-decoration-color:rgba(28,25,22,.5);
+  }
+  .job.done .mark{color:var(--moss)}
+  .job.focus{
+    background:linear-gradient(to right, rgba(185,49,31,.08), transparent 80%);
+    margin:0 -10px;padding:9px 10px;
+  }
+  .job.focus .mark{color:var(--ink)}
+  .job.focus::before{
+    content:"►";font-family:'JetBrains Mono',monospace;
+    position:absolute;left:8px;color:var(--accent);
+    transform:translateX(-100%);
+  }
+
+  /* stamped progress chip on each column */
+  .stamp{
+    position:absolute;top:14px;right:18px;
+    width:54px;height:54px;border:2px double var(--stamp);border-radius:50%;
+    display:grid;place-items:center;color:var(--stamp);
+    transform:rotate(-8deg);opacity:.78;
+    font-family:'Fraunces',serif;font-style:italic;font-weight:800;
+    font-size:11px;letter-spacing:.05em;text-align:center;line-height:.95;
+  }
+  .stamp.done{color:var(--moss);border-color:var(--moss)}
+
+  /* ────────── agenda strip (calendar) ────────── */
+  .agenda{
+    margin:0 72px 0 72px;
+    border-top:3px double var(--rule);
+    border-bottom:1px solid var(--rule);
+    padding:14px 0 14px 0;
+    display:grid;
+    grid-template-columns: 220px 1fr;
+    gap:24px;
+    align-items:stretch;
+  }
+  .agenda-label{
+    font-family:'Fraunces', serif;
+    font-size:48px;font-weight:900;font-style:italic;line-height:.9;
+    letter-spacing:-.03em;
+    color:var(--ink);
+    font-variation-settings:"opsz" 144;
+  }
+  .agenda-label small{
+    display:block;
+    font-family:'JetBrains Mono',monospace;
+    font-style:normal;font-weight:400;
+    font-size:11px;letter-spacing:.22em;color:var(--ink-mute);
+    text-transform:uppercase;margin-top:8px;
+  }
+  .timeline{
+    position:relative;
+    display:grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap:0;
+    padding-top:24px;
+  }
+  .timeline::before{
+    content:"";position:absolute;top:18px;left:0;right:0;height:1px;background:var(--rule);
+  }
+  .hr{
+    position:relative;
+    padding:0 4px;
+    border-left:1px solid rgba(28,25,22,.25);
+    min-height:80px;
+  }
+  .hr:first-child{border-left:none}
+  .hr .h{
+    position:absolute;top:-22px;left:6px;
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;letter-spacing:.16em;color:var(--ink-mute);
+  }
+  .ev{
+    position:absolute;
+    padding:6px 10px 8px 10px;
+    background:var(--paper-2);
+    border-left:3px solid var(--accent);
+    border-top:1px solid rgba(28,25,22,.18);
+    border-right:1px solid rgba(28,25,22,.12);
+    border-bottom:1px solid rgba(28,25,22,.18);
+    font-family:'Newsreader',serif;
+    font-size:15px;line-height:1.15;
+    color:var(--ink);
+    box-shadow:0 1px 0 rgba(0,0,0,.08);
+  }
+  .ev .when{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;letter-spacing:.12em;color:var(--ink-mute);
+    text-transform:uppercase;display:block;margin-bottom:2px;
+  }
+  .ev.now{
+    background:#171311;color:#f1ebdd;border-left-color:#b9311f;
+  }
+  .ev.now .when{color:#d9c4a9}
+  .ev.now::after{
+    content:"⬤ NOW";position:absolute;right:8px;top:6px;
+    font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.18em;
+    color:#b9311f;
+  }
+  .ev.moss{border-left-color:var(--moss)}
+  .ev.ochre{border-left-color:var(--ochre)}
+  .ev.azure{border-left-color:var(--azure)}
+
+  /* ────────── footer ────────── */
+  .foot{
+    position:absolute;left:72px;right:72px;bottom:18px;
+    display:flex;justify-content:space-between;align-items:center;
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;letter-spacing:.22em;color:var(--ink-mute);
+    text-transform:uppercase;
+    border-top:1px solid var(--rule);
+    padding-top:10px;
+  }
+  .foot .pageno{
+    font-family:'Fraunces',serif;font-style:italic;font-size:18px;letter-spacing:0;
+    color:var(--ink-soft);
+  }
+</style>
+</head>
+<body>
+<div class="tv">
+
+  <header class="masthead">
+    <div class="vol-row">
+      <span>Vol. CXXIV &nbsp;·&nbsp; No. 147 &nbsp;·&nbsp; Established MMXXIV</span>
+      <span class="right">
+        <span>The Household Edition</span>
+        <span>Price · One Hug</span>
+      </span>
+    </div>
+    <h1 class="title">The Daily <span class="amp">Kin</span>board</h1>
+    <div class="dateline">
+      <span>Tuesday, the 26<sup>th</sup> of May, Two Thousand &amp; Twenty-Six</span>
+      <span class="weather">
+        <span class="seal">FAIR<br>&amp; MILD</span>
+        <span class="temp">19°</span>
+        <span>WIND&nbsp;NW 8 · RAIN&nbsp;20%</span>
+        <span>7&nbsp;:&nbsp;42 AM</span>
+      </span>
+    </div>
+  </header>
+
+  <section class="columns">
+
+    <article class="col">
+      <div class="stamp">IN<br>PROG.</div>
+      <div class="col-head">
+        <div class="col-name">Maeve</div>
+        <div class="col-meta"><span class="frac">3/6</span>The roster</div>
+      </div>
+
+      <div class="job done">
+        <span class="mark">✓</span>
+        <span class="t">Make bed &amp; tidy room</span>
+        <span class="tag">am</span>
+      </div>
+      <div class="job done">
+        <span class="mark">✓</span>
+        <span class="t">Feed the dog<small>kibble — half scoop</small></span>
+        <span class="tag">am</span>
+      </div>
+      <div class="job done">
+        <span class="mark">✓</span>
+        <span class="t">Pack school lunch</span>
+        <span class="tag">am</span>
+      </div>
+      <div class="job focus">
+        <span class="mark">·</span>
+        <span class="t">Practise piano · 20 min<small>scales then the new piece</small></span>
+        <span class="tag">pm</span>
+      </div>
+      <div class="job">
+        <span class="mark">·</span>
+        <span class="t">Hang out the laundry</span>
+        <span class="tag">pm</span>
+      </div>
+      <div class="job">
+        <span class="mark">·</span>
+        <span class="t">Reading · 30 min</span>
+        <span class="tag">eve</span>
+      </div>
+    </article>
+
+    <article class="col">
+      <div class="stamp done">ALL<br>DONE</div>
+      <div class="col-head">
+        <div class="col-name">Felix</div>
+        <div class="col-meta"><span class="frac">5/5</span>The roster</div>
+      </div>
+      <div class="job done"><span class="mark">✓</span><span class="t">Brush teeth (properly!)</span><span class="tag">am</span></div>
+      <div class="job done"><span class="mark">✓</span><span class="t">Get dressed for school</span><span class="tag">am</span></div>
+      <div class="job done"><span class="mark">✓</span><span class="t">Empty the dishwasher</span><span class="tag">pm</span></div>
+      <div class="job done"><span class="mark">✓</span><span class="t">Take the bins out<small>recycling night</small></span><span class="tag">eve</span></div>
+      <div class="job done"><span class="mark">✓</span><span class="t">Read · 20 min</span><span class="tag">eve</span></div>
+    </article>
+
+    <article class="col">
+      <div class="stamp">IN<br>PROG.</div>
+      <div class="col-head">
+        <div class="col-name">Iris</div>
+        <div class="col-meta"><span class="frac">2/7</span>The roster</div>
+      </div>
+      <div class="job done"><span class="mark">✓</span><span class="t">Make bed</span><span class="tag">am</span></div>
+      <div class="job done"><span class="mark">✓</span><span class="t">Eat breakfast</span><span class="tag">am</span></div>
+      <div class="job"><span class="mark">·</span><span class="t">Tidy art corner</span><span class="tag">am</span></div>
+      <div class="job"><span class="mark">·</span><span class="t">Water the herbs</span><span class="tag">pm</span></div>
+      <div class="job"><span class="mark">·</span><span class="t">Spelling practice<small>Tuesday list</small></span><span class="tag">pm</span></div>
+      <div class="job"><span class="mark">·</span><span class="t">Set the table</span><span class="tag">eve</span></div>
+      <div class="job"><span class="mark">·</span><span class="t">Pyjamas by 7:30</span><span class="tag">eve</span></div>
+    </article>
+
+    <article class="col">
+      <div class="stamp">IN<br>PROG.</div>
+      <div class="col-head">
+        <div class="col-name">Household</div>
+        <div class="col-meta"><span class="frac">1/4</span>Shared tasks</div>
+      </div>
+      <div class="job done"><span class="mark">✓</span><span class="t">Run the dishwasher</span><span class="tag">am</span></div>
+      <div class="job"><span class="mark">·</span><span class="t">Hoover downstairs<small>main rooms only</small></span><span class="tag">pm</span></div>
+      <div class="job"><span class="mark">·</span><span class="t">Compost out for collection</span><span class="tag">pm</span></div>
+      <div class="job"><span class="mark">·</span><span class="t">Lights out · 9:30 pm</span><span class="tag">eve</span></div>
+    </article>
+
+  </section>
+
+  <section class="agenda">
+    <div class="agenda-label">
+      On the Agenda<br>
+      <small>Tuesday · 5 engagements</small>
+    </div>
+    <div class="timeline">
+      <div class="hr"><span class="h">08</span>
+        <div class="ev moss" style="top:24px;left:6px;width:170px;">
+          <span class="when">08:00 – 08:30</span>School drop-off
+        </div>
+      </div>
+      <div class="hr"><span class="h">10</span></div>
+      <div class="hr"><span class="h">12</span>
+        <div class="ev azure" style="top:24px;left:6px;width:170px;">
+          <span class="when">12:30 – 13:30</span>Lunch w/ Nan
+        </div>
+      </div>
+      <div class="hr"><span class="h">14</span>
+        <div class="ev now" style="top:24px;left:30px;width:200px;">
+          <span class="when">14:15 – 15:00</span>Dentist · Felix
+        </div>
+      </div>
+      <div class="hr"><span class="h">16</span>
+        <div class="ev ochre" style="top:24px;left:6px;width:170px;">
+          <span class="when">16:00 – 17:00</span>Piano lesson
+        </div>
+      </div>
+      <div class="hr"><span class="h">18</span>
+        <div class="ev" style="top:24px;left:6px;width:170px;">
+          <span class="when">18:30</span>Dinner together
+        </div>
+      </div>
+      <div class="hr"><span class="h">20</span></div>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <span>Printed at home · Set in Fraunces &amp; Newsreader</span>
+    <span class="pageno">— Page I —</span>
+    <span>Tomorrow: bins night · swimming · book club</span>
+  </footer>
+
+</div>
+</body>
+</html>

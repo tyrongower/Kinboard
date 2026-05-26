@@ -83,9 +83,14 @@ fun KidLaneCard(
                     contentScale = ContentScale.Crop
                 )
             }
+            val nameSize = when {
+                kid.displayName.length <= 7 -> 38f
+                kid.displayName.length <= 9 -> 32f
+                else -> 26f
+            }
             Text(
                 text = kid.displayName,
-                style = MorningType.fraunces(38f).copy(color = inkName),
+                style = MorningType.fraunces(nameSize).copy(color = inkName),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )

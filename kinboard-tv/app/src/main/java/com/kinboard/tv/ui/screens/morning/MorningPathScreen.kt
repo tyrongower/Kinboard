@@ -14,12 +14,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.TransformOrigin
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import com.kinboard.tv.ui.screens.morning.components.ConfettiOverlay
 import com.kinboard.tv.ui.screens.morning.components.MorningCalendarRibbon
@@ -34,26 +36,25 @@ import com.kinboard.tv.ui.viewmodel.MorningUiState
 
 @Composable
 fun MorningPathScreen(state: MorningUiState, vm: MorningPathViewModel) {
-    BoxWithConstraints(
-        Modifier
-            .fillMaxSize()
-            .background(Color.Black)
-    ) {
-        val sx = maxWidth.value / 1920f
-        val sy = maxHeight.value / 1080f
-        val scale = minOf(sx, sy)
+    val configuration = LocalConfiguration.current
+    val screenWPx = with(LocalDensity.current) { configuration.screenWidthDp.dp.toPx() }
+    val screenHPx = with(LocalDensity.current) { configuration.screenHeightDp.dp.toPx() }
+    val designDensity = minOf(screenWPx / 1920f, screenHPx / 1080f)
 
+    CompositionLocalProvider(
+        LocalDensity provides Density(density = designDensity, fontScale = 1f)
+    ) {
         Box(
             Modifier
-                .size(1920.dp, 1080.dp)
-                .align(Alignment.Center)
-                .graphicsLayer(
-                    scaleX = scale,
-                    scaleY = scale,
-                    transformOrigin = TransformOrigin.Center
-                )
-                .focusable()
+                .fillMaxSize()
+                .background(Color.Black),
+            contentAlignment = Alignment.Center,
         ) {
+            Box(
+                Modifier
+                    .size(1920.dp, 1080.dp)
+                    .focusable()
+            ) {
             SceneryBackground(Modifier.fillMaxSize())
 
             MorningTopBar(
@@ -135,6 +136,7 @@ fun MorningPathScreen(state: MorningUiState, vm: MorningPathViewModel) {
                 originY = if (state.focusedKidIndex == 0) 0.42f else 0.72f,
                 onDone = { vm.clearCelebrate() }
             )
+            }
         }
     }
 }

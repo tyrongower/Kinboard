@@ -11,15 +11,19 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.kinboard.tv.data.api.AuthEvents
 import com.kinboard.tv.ui.screens.JobsScreen
 import com.kinboard.tv.ui.screens.LoginScreen
+import com.kinboard.tv.ui.screens.morning.MorningPathScreen
 import com.kinboard.tv.ui.theme.KinboardTVTheme
 import com.kinboard.tv.ui.viewmodel.JobsViewModel
 import com.kinboard.tv.ui.viewmodel.LoginViewModel
+import com.kinboard.tv.ui.viewmodel.MorningPathViewModel
 
 sealed class Screen(val route: String) {
     object Login : Screen("login")
     object Jobs : Screen("jobs")
+    object Morning : Screen("morning")
 }
 
 class MainActivity : ComponentActivity() {
@@ -42,13 +46,20 @@ fun KinboardTVApp() {
     // Navigate based on authentication state
     LaunchedEffect(loginState.isAuthenticated) {
         if (loginState.isAuthenticated) {
-            navController.navigate(Screen.Jobs.route) {
+            navController.navigate(Screen.Morning.route) {
                 popUpTo(Screen.Login.route) { inclusive = true }
             }
         } else {
             navController.navigate(Screen.Login.route) {
-                popUpTo(Screen.Jobs.route) { inclusive = true }
+                popUpTo(Screen.Morning.route) { inclusive = true }
             }
+        }
+    }
+
+    // Force re-login when TokenAuthenticator gives up
+    LaunchedEffect(Unit) {
+        AuthEvents.logoutRequired.collect {
+            loginViewModel.logout()
         }
     }
 
@@ -92,6 +103,12 @@ fun KinboardTVApp() {
                 onFocusedUserChange = jobsViewModel::setFocusedUserId,
                 onRetry = jobsViewModel::loadData
             )
+        }
+
+        composable(Screen.Morning.route) {
+            val morningViewModel: MorningPathViewModel = viewModel()
+            val morningState by morningViewModel.state.collectAsState()
+            MorningPathScreen(state = morningState, vm = morningViewModel)
         }
     }
 }

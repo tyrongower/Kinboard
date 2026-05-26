@@ -13,5 +13,8 @@ public class SiteSettingsDto
     public int WeatherRefreshSeconds { get; set; } = 1800;
     public string? WeatherLocation { get; set; }
 
+    // Morning routine: when kids must be ready by (HH:mm, 24h, local time)
+    public string? SchoolStartTime { get; set; }
+
     // WeatherApiKey is intentionally excluded - only backend needs it
 }

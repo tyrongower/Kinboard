@@ -37,5 +37,8 @@ data class Job(
     val assignments: List<JobAssignment>? = null,
     
     @SerializedName("occurrenceDate")
-    val occurrenceDate: String? = null
+    val occurrenceDate: String? = null,
+
+    @SerializedName("displayOrder")
+    val displayOrder: Int = 0
 )

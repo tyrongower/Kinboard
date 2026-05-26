@@ -61,3 +61,26 @@ val UnassignedJobsColor = Color(0xFF94A3B8) // slate-400 - Unassigned jobs color
 
 // Focus Shadow Color
 val FocusShadowColor = Primary             // #60a5fa with opacity 0.45
+
+// ── Morning Path palette (new screen) ──
+val MorningInk = Color(0xFF2A2014)
+val MorningInkSoft = Color(0xFF6B5A44)
+val MorningRed = Color(0xFFE85A3A)
+val MorningGold = Color(0xFFFFCE3B)
+val MorningGoldDeep = Color(0xFFE09A14)
+val MorningSkyTop = Color(0xFFA8D8F5)
+val MorningSkyMid = Color(0xFFD6ECF9)
+val MorningSkyB1 = Color(0xFFFBE9C6)
+val MorningSkyB2 = Color(0xFFFFCF80)
+val MorningKidWavBg = Color(0xFFFFD0E8)
+val MorningKidWavInk = Color(0xFF9D2A6A)
+val MorningKidMatBg = Color(0xFFCFE0FF)
+val MorningKidMatInk = Color(0xFF1D4EA1)
+val MorningPathTan1 = Color(0xFFEECF95)
+val MorningPathTan2 = Color(0xFFCBA366)
+val MorningPathGreen1 = Color(0xFFCCE4BE)
+val MorningPathGreen2 = Color(0xFF9EC77F)
+val MorningCueRain = Color(0xFFFFE3D6)
+val MorningCueHeavy = Color(0xFFFFD0D0)
+val MorningRainBlue = Color(0xFF3AA9FF)
+val MorningRibbonEv = Color(0xFFFFF3D9)

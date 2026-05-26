@@ -70,7 +70,8 @@ public class SiteSettingsController : ControllerBase
                     ChoresRefreshSeconds = settings.ChoresRefreshSeconds,
                     CalendarRefreshSeconds = settings.CalendarRefreshSeconds,
                     WeatherRefreshSeconds = settings.WeatherRefreshSeconds,
-                    WeatherLocation = settings.WeatherLocation
+                    WeatherLocation = settings.WeatherLocation,
+                    SchoolStartTime = settings.SchoolStartTime
                 };
                 _logger.LogInformation("Retrieved site settings for kiosk user");
                 return Ok(dto);
@@ -105,6 +106,7 @@ public class SiteSettingsController : ControllerBase
                 _logger.LogInformation("No existing settings found, creating new settings");
                 updated.DefaultView = NormalizeView(updated.DefaultView);
                 updated.CompletionMode = NormalizeCompletion(updated.CompletionMode);
+                updated.SchoolStartTime = NormalizeSchoolTime(updated.SchoolStartTime);
                 NormalizeIntervals(updated);
                 _context.SiteSettings.Add(updated);
             }
@@ -119,6 +121,7 @@ public class SiteSettingsController : ControllerBase
                 settings.WeatherRefreshSeconds = NormalizeInterval(updated.WeatherRefreshSeconds, 300, 24 * 3600, 1800);
                 settings.WeatherApiKey = updated.WeatherApiKey;
                 settings.WeatherLocation = updated.WeatherLocation;
+                settings.SchoolStartTime = NormalizeSchoolTime(updated.SchoolStartTime);
                 _context.Entry(settings).State = EntityState.Modified;
             }
             await _context.SaveChangesAsync();
@@ -171,5 +174,14 @@ public class SiteSettingsController : ControllerBase
         if (value < min) return min;
         if (value > max) return max;
         return value;
+    }
+
+    private static string? NormalizeSchoolTime(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return null;
+        var trimmed = value.Trim();
+        if (TimeOnly.TryParseExact(trimmed, "HH:mm", out var t)) return t.ToString("HH:mm");
+        if (TimeOnly.TryParse(trimmed, out t)) return t.ToString("HH:mm");
+        return null;
     }
 }

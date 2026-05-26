@@ -20,4 +20,7 @@ public class SiteSettings
     // Weather API settings
     public string? WeatherApiKey { get; set; }
     public string? WeatherLocation { get; set; }
+
+    // Morning routine: when kids must be ready by (HH:mm, 24h, local time)
+    public string? SchoolStartTime { get; set; }
 }

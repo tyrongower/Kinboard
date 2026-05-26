@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Kinboard TV · Morning Path v2 (real kiosk data)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700;800&family=Fraunces:opsz,wght@9..144,700;9..144,900&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-1:#ffe9c2;
+    --bg-2:#ffcf80;
+    --grass:#aedb8b;
+    --grass-2:#7dbb5e;
+    --path:#e8d5a9;
+    --ink:#2a2014;
+    --ink-soft:#6b5a44;
+    --gold:#ffce3b;
+    --gold-deep:#e09a14;
+    --sky:#bee5ff;
+    --rain-blue:#3aa9ff;
+    --red:#e85a3a;
+    --kid-wav:#EC4899;
+    --kid-mat:#3B82F6;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;height:100%;background:#000;font-family:'Quicksand',sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
+  .tv{
+    width:1920px;height:1080px;margin:0 auto;position:relative;overflow:hidden;
+    background:
+      radial-gradient(ellipse at 80% 0%, rgba(58,169,255,.28), transparent 55%),
+      radial-gradient(ellipse at 0% 0%, rgba(190,229,255,.6), transparent 50%),
+      linear-gradient(180deg, #a8d8f5 0%, #d6ecf9 36%, #fbe9c6 64%, var(--bg-2) 100%);
+  }
+  @media (max-width:1920px){.tv{transform:scale(calc(100vw/1920));transform-origin:top left}}
+  @media (max-height:1080px) and (min-width:1920px){.tv{transform:scale(calc(100vh/1080));transform-origin:top left}}
+
+  /* rainy-day scenery (89% rain today) */
+  .scenery{position:absolute;inset:0;pointer-events:none;z-index:0}
+  .cloud-big{position:absolute;background:#fff;border-radius:90px;opacity:.94;filter:drop-shadow(0 6px 0 rgba(0,0,0,.08))}
+  .cloud-big::before,.cloud-big::after{content:"";position:absolute;background:#fff;border-radius:50%}
+  .cloud-big::before{width:60%;height:120%;top:-50%;left:18%}
+  .cloud-big::after{width:42%;height:96%;top:-32%;left:55%}
+  .cloud-big.c1{top:50px;left:80px;width:220px;height:64px}
+  .cloud-big.c2{top:130px;left:520px;width:280px;height:72px;opacity:.85}
+  .cloud-big.c3{top:60px;left:980px;width:200px;height:56px;opacity:.9}
+  .cloud-big.c4{top:160px;left:1280px;width:180px;height:52px;opacity:.8}
+  /* mist over hills */
+  .scenery::after{
+    content:"";position:absolute;left:0;right:0;bottom:130px;height:60px;
+    background:linear-gradient(180deg, transparent 0%, rgba(255,255,255,.4) 100%);
+    pointer-events:none;
+  }
+
+  /* ─── Top bar: brand · countdown · weather ─── */
+  .top{
+    position:relative;z-index:2;
+    display:grid;grid-template-columns:1fr auto auto;gap:30px;
+    padding:36px 60px 0 60px;align-items:flex-start;
+  }
+  .clock{
+    text-align:center;
+    background:var(--red);color:#fff;
+    border:5px solid var(--ink);
+    border-radius:26px;
+    padding:14px 28px;
+    box-shadow:0 8px 0 var(--ink);
+    transform:rotate(-1.6deg);
+    align-self:center;
+  }
+  .clock .lbl{font-family:'Quicksand',sans-serif;font-weight:800;font-size:18px;color:#ffd9d0;letter-spacing:.22em;text-transform:uppercase}
+  .clock .now{font-family:'Fraunces',serif;font-weight:900;font-style:italic;font-size:70px;line-height:.85;color:#fff;letter-spacing:-.02em}
+  .clock .now small{font-family:'Quicksand',sans-serif;font-style:normal;font-weight:800;font-size:24px;color:#ffd9d0;display:inline-block;margin-left:4px}
+  .clock .target{font-family:'Caveat',cursive;font-weight:700;font-size:30px;color:#ffe9e2;margin-top:-2px;line-height:1}
+  .brand{
+    font-family:'Fraunces',serif;font-weight:900;font-style:italic;font-size:84px;line-height:.85;
+    letter-spacing:-.02em;color:var(--ink);
+  }
+  .brand span{color:var(--red)}
+  .brand small{
+    display:block;font-family:'Quicksand',sans-serif;font-weight:700;font-size:24px;color:var(--ink-soft);letter-spacing:.18em;text-transform:uppercase;margin-top:10px;font-style:normal;
+  }
+  .brand .loc{
+    display:inline-flex;align-items:center;gap:8px;
+    background:#fff;border:3px solid var(--ink);border-radius:18px;padding:4px 12px;
+    font-family:'Quicksand',sans-serif;font-weight:700;font-size:18px;color:var(--ink);letter-spacing:.04em;
+    box-shadow:0 4px 0 var(--ink);margin-top:14px;text-transform:none;
+  }
+
+  .wx{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .day{
+    width:200px;background:#fff;border:5px solid var(--ink);border-radius:24px;
+    padding:12px 10px 14px 10px;text-align:center;box-shadow:0 6px 0 var(--ink);
+    transform:rotate(var(--r,-2deg));position:relative;
+  }
+  .day.d1{--r:-3deg}
+  .day.d2{--r:1deg}
+  .day.d3{--r:-1deg}
+  .day.today::after{
+    content:"TODAY";position:absolute;top:-14px;left:50%;transform:translateX(-50%) rotate(-3deg);
+    background:var(--red);color:#fff;border:3px solid var(--ink);border-radius:14px;padding:3px 12px;
+    font-family:'Quicksand',sans-serif;font-weight:700;font-size:14px;letter-spacing:.18em;box-shadow:0 4px 0 var(--ink);
+  }
+  .day .lbl{font-family:'Quicksand',sans-serif;font-weight:800;font-size:22px;color:var(--ink);letter-spacing:.06em;text-transform:uppercase}
+  .day .sub{font-family:'Quicksand',sans-serif;font-weight:700;font-size:13px;color:var(--ink-soft);letter-spacing:.14em;text-transform:uppercase;margin-top:-2px}
+  .day svg.w{display:block;width:96px;height:96px;margin:2px auto 0 auto}
+  .day .t{font-family:'Fraunces',serif;font-weight:900;font-style:italic;font-size:46px;line-height:1;color:var(--ink)}
+  .day .t .lo{color:var(--ink-soft);font-size:30px}
+  .day .rain{
+    display:inline-flex;gap:6px;align-items:center;
+    background:#cfe9ff;border:2.5px solid var(--ink);border-radius:14px;padding:2px 10px;
+    font-family:'Quicksand',sans-serif;font-weight:800;font-size:16px;color:var(--ink);
+    margin:4px 0;letter-spacing:.04em;
+  }
+  .day .rain::before{content:"💧";font-size:18px}
+  .day .cue{
+    display:inline-flex;gap:6px;align-items:center;
+    background:var(--cue-bg,#ffe3d6);border:3px solid var(--ink);border-radius:16px;
+    padding:4px 12px;font-family:'Quicksand',sans-serif;font-weight:800;font-size:18px;color:var(--ink);
+    box-shadow:0 3px 0 var(--ink);
+  }
+  .day .cue svg{width:22px;height:22px}
+  .day.d3 .cue{--cue-bg:#ffd0d0}
+
+  /* ─── Two paths ─── */
+  .paths{
+    position:absolute;left:0;right:0;top:280px;height:600px;z-index:1;
+    display:flex;flex-direction:column;gap:8px;
+  }
+  .lane{
+    position:relative;flex:1;
+    display:grid;grid-template-columns:220px 1fr;align-items:center;
+    padding:0 60px 0 60px;
+  }
+  /* path strip */
+  .lane::before{
+    content:"";position:absolute;left:280px;right:60px;top:50%;height:54px;transform:translateY(-50%);
+    background:linear-gradient(180deg,#eecf95 0%,#cba366 100%);
+    border-top:4px dashed var(--ink);border-bottom:4px dashed var(--ink);z-index:0;
+  }
+  .lane.lane-2::before{background:linear-gradient(180deg,#cce4be 0%,#9ec77f 100%)}
+  /* mid-line dashes */
+  .lane::after{
+    content:"";position:absolute;left:280px;right:60px;top:50%;height:6px;transform:translateY(-50%);
+    background:repeating-linear-gradient(90deg, var(--ink) 0 14px, transparent 14px 26px);
+    opacity:.4;z-index:1;
+  }
+
+  .kid-card{
+    position:relative;z-index:3;
+    background:#fff;border:5px solid var(--ink);border-radius:26px;
+    padding:14px 12px 12px 12px;box-shadow:0 8px 0 var(--ink);
+    transform:rotate(-1.4deg);
+    display:flex;flex-direction:column;align-items:center;gap:8px;
+    width:200px;justify-self:start;
+  }
+  .lane.lane-2 .kid-card{transform:rotate(1deg)}
+  .kid-card .ring{
+    width:96px;height:96px;border-radius:50%;background:var(--kid-c);border:5px solid var(--ink);
+    overflow:hidden;display:grid;place-items:center;box-shadow:0 4px 0 var(--ink);
+  }
+  .kid-card .ring img{width:100%;height:100%;object-fit:cover}
+  .kid-card .ring svg{width:92px;height:92px}
+  .kid-card .nm{
+    font-family:'Fraunces',serif;font-weight:900;font-style:italic;font-size:38px;line-height:.9;color:var(--ink);
+    text-align:center;white-space:nowrap;
+  }
+  .kid-card .progress-pill{
+    display:inline-flex;align-items:center;gap:8px;
+    background:var(--gold);border:3px solid var(--ink);border-radius:18px;padding:6px 16px;
+    font-family:'Fraunces',serif;font-style:italic;font-weight:900;font-size:28px;color:var(--ink);line-height:1;
+    box-shadow:0 4px 0 var(--ink);
+  }
+  .kid-card .progress-pill.zero{background:#fff}
+
+  /* stones grid — shrink-to-fit (auto cols) */
+  .stations{
+    position:relative;z-index:2;height:100%;
+    display:grid;grid-auto-flow:column;grid-auto-columns:1fr;
+    gap:6px;align-items:center;
+    padding-right:8px;
+  }
+  .stone{
+    position:relative;justify-self:center;
+    width:108px;height:108px;border-radius:50%;
+    background:#fff;border:5px solid var(--ink);
+    display:grid;place-items:center;box-shadow:0 7px 0 var(--ink);
+    overflow:visible;
+  }
+  .stone .img-wrap{
+    width:84px;height:84px;border-radius:50%;overflow:hidden;
+    background:var(--tilebg,#fff3d9);display:grid;place-items:center;
+  }
+  .stone .img-wrap img{width:80px;height:80px;object-fit:contain}
+  .stone .lbl{
+    position:absolute;left:50%;top:calc(100% + 14px);transform:translateX(-50%);
+    background:#fff;border:3px solid var(--ink);border-radius:14px;padding:5px 12px;
+    font-family:'Quicksand',sans-serif;font-weight:700;font-size:22px;color:var(--ink);
+    white-space:nowrap;box-shadow:0 4px 0 var(--ink);
+  }
+  /* NOW stone */
+  .stone.now{
+    background:#fff;border-color:var(--red);
+    box-shadow:0 0 0 8px rgba(232,90,58,.18),0 8px 0 var(--ink);
+    animation:bob 1.6s ease-in-out infinite;
+  }
+  .stone.now .lbl{background:var(--red);color:#fff;border-color:var(--ink)}
+  .stone.now::after{
+    content:"NEXT";position:absolute;top:-30px;left:50%;transform:translateX(-50%);
+    background:var(--red);color:#fff;border:3px solid var(--ink);border-radius:18px;padding:4px 14px;
+    font-family:'Quicksand',sans-serif;font-weight:800;font-size:13px;letter-spacing:.22em;
+    box-shadow:0 4px 0 var(--ink);
+  }
+  /* D-pad focus */
+  .stone.focused{
+    outline:6px solid var(--gold);outline-offset:6px;
+    box-shadow:0 0 0 12px rgba(255,206,59,.32),0 8px 0 var(--ink);
+  }
+  .stone.focused .lbl{background:var(--gold);color:var(--ink)}
+  /* walker — avatar perched on current stone */
+  .stone.now .walker{
+    position:absolute;top:-58px;left:50%;transform:translateX(-50%);
+    width:62px;height:62px;border-radius:50%;
+    background:#fff;border:4px solid var(--ink);
+    box-shadow:0 5px 0 var(--ink);
+    overflow:hidden;
+    z-index:5;
+    animation:hop 1.6s ease-in-out infinite;
+  }
+  .stone.now .walker img{width:100%;height:100%;object-fit:cover}
+  .stone.now .walker::after{
+    content:"";position:absolute;left:50%;bottom:-6px;width:0;height:0;transform:translateX(-50%);
+    border-left:8px solid transparent;border-right:8px solid transparent;border-top:8px solid var(--ink);
+  }
+  @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+  @keyframes hop{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(-4px)}}
+
+  /* "X done" badge floating on lane start */
+  .done-stack{
+    position:relative;z-index:3;
+    display:flex;align-items:center;margin-left:-8px;
+  }
+  .done-stack .chip{
+    background:var(--gold);border:4px solid var(--ink);border-radius:50%;
+    width:64px;height:64px;display:grid;place-items:center;text-align:center;
+    box-shadow:0 5px 0 var(--ink);
+    transform:rotate(-8deg);
+    margin-right:-18px;
+  }
+  .done-stack .chip:nth-child(2){transform:rotate(4deg);margin-right:-18px;background:#fff}
+  .done-stack .chip:nth-child(3){transform:rotate(-2deg);background:var(--gold)}
+  .done-stack .chip svg{width:42px;height:42px}
+  .done-stack .count{
+    background:var(--ink);color:var(--gold);
+    font-family:'Fraunces',serif;font-weight:900;font-style:italic;font-size:24px;line-height:.85;
+    border-radius:22px;padding:8px 14px;
+    box-shadow:0 4px 0 #000;border:3px solid #000;
+    transform:rotate(2deg);margin-left:6px;
+  }
+  .done-stack .count small{display:block;font-family:'Quicksand',sans-serif;font-style:normal;font-weight:700;font-size:10px;letter-spacing:.18em;color:#fff;margin-top:-2px}
+
+  .lane[data-c="wav"]{--kid-c:#ffd0e8}
+  .lane[data-c="mat"]{--kid-c:#cfe0ff}
+  .lane[data-c="wav"] .kid-card .nm{color:#9d2a6a}
+  .lane[data-c="mat"] .kid-card .nm{color:#1d4ea1}
+
+  /* ─── bottom ribbon (3 real events) ─── */
+  .ribbon{
+    position:absolute;left:60px;right:60px;bottom:36px;height:140px;z-index:2;
+    background:#fff;border:5px solid var(--ink);border-radius:26px;
+    box-shadow:0 8px 0 var(--ink);
+    padding:14px 22px;
+    display:grid;grid-template-columns:240px 1fr;gap:20px;align-items:center;
+    transform:rotate(.2deg);
+  }
+  .ribbon .ttl{font-family:'Fraunces',serif;font-weight:900;font-style:italic;font-size:52px;line-height:.85;color:var(--ink)}
+  .ribbon .ttl small{display:block;font-family:'Quicksand',sans-serif;font-style:normal;font-weight:700;font-size:14px;color:var(--ink-soft);letter-spacing:.18em;text-transform:uppercase;margin-top:6px}
+  .events{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .ev{
+    background:#fff3d9;border:3.5px solid var(--ink);border-radius:18px;padding:10px 14px;
+    font-family:'Quicksand',sans-serif;font-weight:800;font-size:22px;color:var(--ink);
+    box-shadow:0 4px 0 var(--ink);transform:rotate(var(--er,-1deg));
+    display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:center;
+  }
+  .ev .dot{width:16px;height:16px;border-radius:50%;background:var(--c,#8B5CF6);border:3px solid var(--ink)}
+  .ev .when{display:block;font-family:'Quicksand',sans-serif;font-weight:800;font-size:13px;letter-spacing:.18em;color:var(--ink-soft);text-transform:uppercase}
+
+</style>
+</head>
+<body>
+<div class="tv">
+
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="w-rain" viewBox="0 0 64 64">
+        <path d="M22 38c-8 0-12-6-12-10s4-8 9-8c1-6 6-10 12-10s12 5 12 12c4 0 9 3 9 8s-4 8-12 8z" fill="#b8c8d8" stroke="#1f1a14" stroke-width="3" stroke-linejoin="round"/>
+        <g fill="#3aa9ff" stroke="#1f1a14" stroke-width="2.5" stroke-linejoin="round">
+          <path d="M14 44l-3 8c-1 3 2 5 4 4s3-3 2-5z"/>
+          <path d="M26 46l-3 8c-1 3 2 5 4 4s3-3 2-5z"/>
+          <path d="M38 44l-3 8c-1 3 2 5 4 4s3-3 2-5z"/>
+          <path d="M50 46l-3 8c-1 3 2 5 4 4s3-3 2-5z"/>
+        </g>
+      </symbol>
+      <symbol id="w-heavyrain" viewBox="0 0 64 64">
+        <path d="M22 36c-8 0-12-6-12-10s4-8 9-8c1-6 6-10 12-10s12 5 12 12c4 0 9 3 9 8s-4 8-12 8z" fill="#8094a8" stroke="#1f1a14" stroke-width="3" stroke-linejoin="round"/>
+        <g fill="#3aa9ff" stroke="#1f1a14" stroke-width="2" stroke-linejoin="round">
+          <path d="M12 42l-3 10c-1 3 2 5 4 4s3-4 2-6z"/>
+          <path d="M22 44l-3 10c-1 3 2 5 4 4s3-4 2-6z"/>
+          <path d="M32 42l-3 10c-1 3 2 5 4 4s3-4 2-6z"/>
+          <path d="M42 44l-3 10c-1 3 2 5 4 4s3-4 2-6z"/>
+          <path d="M52 42l-3 10c-1 3 2 5 4 4s3-4 2-6z"/>
+        </g>
+      </symbol>
+      <symbol id="cue-raincoat" viewBox="0 0 24 24">
+        <path d="M6 4l-3 3 2 3 2-1v12h10V9l2 1 2-3-3-3c-1 2-2 3-3 3s-3-1-3-3z" fill="#ffd23f" stroke="#1f1a14" stroke-width="2" stroke-linejoin="round"/>
+        <path d="M10 6c0 2 1 3 2 3s2-1 2-3" stroke="#1f1a14" stroke-width="1.5" fill="none"/>
+        <circle cx="9" cy="13" r="1" fill="#1f1a14"/>
+        <circle cx="9" cy="16" r="1" fill="#1f1a14"/>
+      </symbol>
+      <symbol id="cue-boots" viewBox="0 0 24 24">
+        <path d="M4 4h7v12c0 2 2 3 4 3h5v3H4z" fill="#3aa9ff" stroke="#1f1a14" stroke-width="2" stroke-linejoin="round"/>
+        <path d="M11 12h4" stroke="#1f1a14" stroke-width="2"/>
+      </symbol>
+      <symbol id="check" viewBox="0 0 64 64">
+        <path d="M14 32l12 12 24-24" fill="none" stroke="#1f1a14" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+      </symbol>
+    </defs>
+  </svg>
+
+  <div class="scenery">
+    <div class="cloud-big c1"></div>
+    <div class="cloud-big c2"></div>
+    <div class="cloud-big c3"></div>
+    <div class="cloud-big c4"></div>
+  </div>
+
+  <header class="top">
+    <div class="brand">
+      Good morning<span>!</span>
+      <small>tuesday · 26 may · misty · 13°</small>
+      <span class="loc">📍 Stanthorpe, AU</span>
+    </div>
+    <div class="clock">
+      <div class="lbl">school in</div>
+      <div class="now">47<small>min</small></div>
+      <div class="target">be ready by 8:25</div>
+    </div>
+    <div class="wx">
+      <div class="day d1 today">
+        <div class="lbl">Tuesday</div>
+        <div class="sub">26 May</div>
+        <svg class="w"><use href="#w-rain"/></svg>
+        <div class="t">19° <span class="lo">12°</span></div>
+        <span class="rain">89%</span>
+        <span class="cue"><svg><use href="#cue-raincoat"/></svg> raincoat</span>
+      </div>
+      <div class="day d2">
+        <div class="lbl">Wednesday</div>
+        <div class="sub">27 May</div>
+        <svg class="w"><use href="#w-rain"/></svg>
+        <div class="t">17° <span class="lo">13°</span></div>
+        <span class="rain">89%</span>
+        <span class="cue"><svg><use href="#cue-raincoat"/></svg> raincoat</span>
+      </div>
+      <div class="day d3">
+        <div class="lbl">Thursday</div>
+        <div class="sub">28 May</div>
+        <svg class="w"><use href="#w-heavyrain"/></svg>
+        <div class="t">14° <span class="lo">9°</span></div>
+        <span class="rain">88% · heavy</span>
+        <span class="cue"><svg><use href="#cue-raincoat"/></svg><svg><use href="#cue-boots"/></svg> coat + boots</span>
+      </div>
+    </div>
+  </header>
+
+  <section class="paths">
+
+    <!-- ── Waverley · 11 jobs total, 4 done, 7 visible (hideCompletedInKiosk=true) ── -->
+    <div class="lane lane-1" data-c="wav">
+      <div class="kid-card">
+        <div class="ring"><img src="https://kinboard.gower.tools/avatars/user_2.webp" alt="Waverley" onerror="this.style.display='none'"></div>
+        <div class="nm">Waverley</div>
+        <span class="progress-pill">4 / 11</span>
+      </div>
+      <div class="stations">
+        <!-- visible (TODO) stones in DisplayOrder; completed hidden per user pref -->
+        <div class="stone now focused">
+          <div class="walker"><img src="https://kinboard.gower.tools/avatars/user_2.webp" alt=""></div>
+          <div class="img-wrap"><img src="https://kinboard.gower.tools/job-images/job_12.webp" alt="Brush Hair"></div>
+          <span class="lbl">Brush Hair</span>
+        </div>
+        <div class="stone"><div class="img-wrap"><img src="https://kinboard.gower.tools/job-images/job_15.webp" alt=""></div><span class="lbl">Sunscreen</span></div>
+        <div class="stone"><div class="img-wrap"><img src="https://kinboard.gower.tools/job-images/job_13.webp" alt=""></div><span class="lbl">Breakfast</span></div>
+        <div class="stone"><div class="img-wrap"><img src="https://kinboard.gower.tools/job-images/job_14.webp" alt=""></div><span class="lbl">School bag</span></div>
+        <div class="stone"><div class="img-wrap"><img src="https://kinboard.gower.tools/job-images/job_16.webp" alt=""></div><span class="lbl">Dance bag</span></div>
+        <div class="stone"><div class="img-wrap"><img src="https://kinboard.gower.tools/job-images/job_17.webp" alt=""></div><span class="lbl">Jujitsu</span></div>
+        <div class="stone"><div class="img-wrap"><img src="https://kinboard.gower.tools/job-images/job_4.webp" alt=""></div><span class="lbl">Make bed</span></div>
+      </div>
+    </div>
+
+    <!-- ── Matilda · 9 jobs total, 0 done, all 9 visible ── -->
+    <div class="lane lane-2" data-c="mat">
+      <div class="kid-card">
+        <div class="ring"><img src="https://kinboard.gower.tools/avatars/user_3.webp" alt="Matilda" onerror="this.style.display='none'"></div>
+        <div class="nm">Matilda</div>
+        <span class="progress-pill zero">0 / 9</span>
+      </div>
+      <div class="stations">
+        <div class="stone now">
+          <div class="walker"><img src="https://kinboard.gower.tools/avatars/user_3.webp" alt=""></div>
+          <div class="img-wrap"><img src="https://kinboard.gower.tools/job-images/job_10.webp" alt="Get Dressed"></div>
+          <span class="lbl">Get Dressed</span>
+        </div>
+        <div class="stone"><div class="img-wrap"><img src="https://kinboard.gower.tools/job-images/job_9.webp" alt=""></div><span class="lbl">Open Curtains</span></div>
+        <div class="stone"><div class="img-wrap"><img src="https://kinboard.gower.tools/job-images/job_1.webp" alt=""></div><span class="lbl">Brush Teeth</span></div>
+        <div class="stone"><div class="img-wrap"><img src="https://kinboard.gower.tools/job-images/job_12.webp" alt=""></div><span class="lbl">Brush Hair</span></div>
+        <div class="stone"><div class="img-wrap"><img src="https://kinboard.gower.tools/job-images/job_15.webp" alt=""></div><span class="lbl">Sunscreen</span></div>
+        <div class="stone"><div class="img-wrap"><img src="https://kinboard.gower.tools/job-images/job_13.webp" alt=""></div><span class="lbl">Breakfast</span></div>
+        <div class="stone"><div class="img-wrap"><img src="https://kinboard.gower.tools/job-images/job_14.webp" alt=""></div><span class="lbl">School bag</span></div>
+        <div class="stone"><div class="img-wrap"><img src="https://kinboard.gower.tools/job-images/job_17.webp" alt=""></div><span class="lbl">Jujitsu</span></div>
+        <div class="stone"><div class="img-wrap"><img src="https://kinboard.gower.tools/job-images/job_4.webp" alt=""></div><span class="lbl">Make bed</span></div>
+      </div>
+    </div>
+
+  </section>
+
+  <section class="ribbon">
+    <div class="ttl">Today<br><small>tue · 3 things on</small></div>
+    <div class="events">
+      <div class="ev" style="--er:-1deg;--c:#8B5CF6"><span class="dot"></span><div><span class="when">09:30 – 10:30</span>Matilda doc</div></div>
+      <div class="ev" style="--er:0.6deg;--c:#8B5CF6"><span class="dot"></span><div><span class="when">15:30 – 16:15</span>Jujitsu · YMCA</div></div>
+      <div class="ev" style="--er:-0.8deg;--c:#8B5CF6"><span class="dot"></span><div><span class="when">17:00 – 17:30</span>Wav · Contemporary</div></div>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>

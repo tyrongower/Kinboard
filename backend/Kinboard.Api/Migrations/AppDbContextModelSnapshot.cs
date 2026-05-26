@@ -376,6 +376,9 @@ namespace Kinboard.Api.Migrations
                         .HasColumnType("TEXT")
                         .HasDefaultValue("Day");
 
+                    b.Property<string>("SchoolStartTime")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("WeatherApiKey")
                         .HasColumnType("TEXT");
 

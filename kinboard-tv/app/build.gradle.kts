@@ -67,7 +67,7 @@ dependencies {
     implementation("androidx.leanback:leanback:1.0.0")
 
     // Compose for TV
-    implementation(platform("androidx.compose:compose-bom:2024.01.00"))
+    implementation(platform("androidx.compose:compose-bom:2024.06.00"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
@@ -104,9 +104,6 @@ dependencies {
     // Image Loading - Coil
     implementation("io.coil-kt:coil-compose:2.5.0")
     implementation("io.coil-kt:coil-svg:2.5.0")
-
-    // Confetti for celebrations
-    implementation("nl.dionsegijn:konfetti-compose:2.0.4")
 
     // Splash screen
     implementation("androidx.core:core-splashscreen:1.0.1")

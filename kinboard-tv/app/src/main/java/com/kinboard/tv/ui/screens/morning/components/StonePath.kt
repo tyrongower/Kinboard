@@ -41,6 +41,8 @@ fun StonePath(
             }
         }
 
+        val nextIdx = stones.indexOfFirst { it.asg.isCompleted != true }
+
         Row(
             modifier = Modifier.fillMaxSize(),
             verticalAlignment = Alignment.CenterVertically
@@ -54,8 +56,8 @@ fun StonePath(
                         data = sd,
                         kid = kid,
                         size = stoneSize,
-                        isNext = i == 0,
-                        showWalker = i == 0,
+                        isNext = i == nextIdx,
+                        showWalker = i == nextIdx,
                         focusRequester = focusReqs[i],
                         onFocused = { onFocusStone(i) },
                         onToggle = { onToggleStone(sd.job, sd.asg) }

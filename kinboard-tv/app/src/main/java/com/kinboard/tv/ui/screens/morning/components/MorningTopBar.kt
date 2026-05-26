@@ -66,6 +66,7 @@ fun MorningTopBar(state: MorningUiState, modifier: Modifier = Modifier) {
             now = state.now,
             weather = state.weather,
             settings = state.siteSettings,
+            isOffline = state.isOffline,
             modifier = Modifier.weight(1f)
         )
         SchoolCountdownChip(
@@ -82,6 +83,7 @@ private fun Brand(
     now: LocalDateTime,
     weather: WeatherData?,
     settings: SiteSettings?,
+    isOffline: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val today = now.toLocalDate()
@@ -123,7 +125,16 @@ private fun Brand(
         )
         if (weather != null && settings?.weatherLocation?.isNotBlank() == true) {
             Spacer(Modifier.height(14.dp))
-            LocationPill(settings.weatherLocation)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                LocationPill(settings.weatherLocation)
+                if (isOffline) OfflinePill()
+            }
+        } else if (isOffline) {
+            Spacer(Modifier.height(14.dp))
+            OfflinePill()
         }
     }
 }

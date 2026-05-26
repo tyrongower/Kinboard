@@ -105,6 +105,9 @@ dependencies {
     implementation("io.coil-kt:coil-compose:2.5.0")
     implementation("io.coil-kt:coil-svg:2.5.0")
 
+    // Confetti for celebrations
+    implementation("nl.dionsegijn:konfetti-compose:2.0.4")
+
     // Splash screen
     implementation("androidx.core:core-splashscreen:1.0.1")
 

@@ -11,6 +11,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.kinboard.tv.data.api.AuthEvents
 import com.kinboard.tv.ui.screens.JobsScreen
 import com.kinboard.tv.ui.screens.LoginScreen
 import com.kinboard.tv.ui.screens.morning.MorningPathScreen
@@ -52,6 +53,13 @@ fun KinboardTVApp() {
             navController.navigate(Screen.Login.route) {
                 popUpTo(Screen.Morning.route) { inclusive = true }
             }
+        }
+    }
+
+    // Force re-login when TokenAuthenticator gives up
+    LaunchedEffect(Unit) {
+        AuthEvents.logoutRequired.collect {
+            loginViewModel.logout()
         }
     }
 

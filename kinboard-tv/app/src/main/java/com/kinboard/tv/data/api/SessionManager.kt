@@ -61,4 +61,10 @@ class SessionManager(private val context: Context) {
             it.remove(PIN)
         }
     }
+
+    suspend fun clearPin() {
+        context.dataStore.edit {
+            it.remove(PIN)
+        }
+    }
 }

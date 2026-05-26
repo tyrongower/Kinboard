@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.kinboard.tv.data.api.ApiClient
+import com.kinboard.tv.data.local.PreferencesManager
 import com.kinboard.tv.data.model.CalendarEvent
 import com.kinboard.tv.data.model.Job
 import com.kinboard.tv.data.model.JobAssignment
@@ -29,6 +30,7 @@ data class MorningUiState(
     val siteSettings: SiteSettings? = null,
     val now: LocalDateTime = LocalDateTime.now(),
     val isLoading: Boolean = true,
+    val isOffline: Boolean = false,
     val errorMessage: String? = null,
     val focusedKidIndex: Int = 0,
     val focusedStoneIndex: Int = 0,
@@ -43,13 +45,34 @@ class MorningPathViewModel(application: Application) : AndroidViewModel(applicat
     private val dateFmt = DateTimeFormatter.ofPattern("yyyy-MM-dd")
 
     private val api get() = ApiClient.getApi(getApplication())
+    private val prefs = PreferencesManager(application)
 
     init {
+        hydrateFromCache()
         loadAll()
         startChoresPolling()
         startWeatherPolling()
         startCalendarPolling()
         tickClock()
+        startAuthHeartbeat()
+    }
+
+    private fun hydrateFromCache() = viewModelScope.launch {
+        val cachedJobs = prefs.getJobs()
+        val cachedUsers = prefs.getUsers()
+        val cachedWeather = prefs.getWeather()
+        val cachedCal = prefs.getCalendarEvents()
+        if (cachedJobs.isEmpty() && cachedUsers.isEmpty() &&
+            cachedWeather == null && cachedCal.isEmpty()
+        ) return@launch
+        _state.update {
+            it.copy(
+                users = cachedUsers,
+                jobs = cachedJobs,
+                weather = cachedWeather,
+                calendarEvents = cachedCal
+            )
+        }
     }
 
     private fun loadAll() = viewModelScope.launch {
@@ -64,19 +87,38 @@ class MorningPathViewModel(application: Application) : AndroidViewModel(applicat
             val weather = api.getWeather().body()
             val cal = api.getCalendarEvents(todayStr, endStr).body() ?: emptyList()
 
+            val sortedUsers = users.filter { u -> u.id > 0 }.sortedBy { u -> u.displayOrder ?: 0 }
+
             _state.update {
                 it.copy(
-                    users = users.filter { u -> u.id > 0 }.sortedBy { u -> u.displayOrder ?: 0 },
+                    users = sortedUsers,
                     jobs = jobs,
                     weather = weather,
                     calendarEvents = cal,
                     siteSettings = settings,
                     isLoading = false,
+                    isOffline = false,
                     errorMessage = null
                 )
             }
+
+            persistCache(sortedUsers, jobs, weather, cal)
         } catch (e: Exception) {
-            _state.update { it.copy(isLoading = false, errorMessage = e.message) }
+            _state.update { it.copy(isLoading = false, isOffline = true, errorMessage = e.message) }
+        }
+    }
+
+    private fun persistCache(
+        users: List<User>,
+        jobs: List<Job>,
+        weather: WeatherData?,
+        cal: List<CalendarEvent>
+    ) = viewModelScope.launch {
+        runCatching {
+            prefs.saveJobs(jobs)
+            prefs.saveUsers(users)
+            weather?.let { prefs.saveWeather(it) }
+            prefs.saveCalendarEvents(cal)
         }
     }
 
@@ -89,13 +131,22 @@ class MorningPathViewModel(application: Application) : AndroidViewModel(applicat
                 val today = LocalDate.now().format(dateFmt)
                 val jobs = api.getJobs(today).body() ?: emptyList()
                 val users = api.getUsers().body() ?: emptyList()
+                val sortedUsers = users.filter { u -> u.id > 0 }.sortedBy { u -> u.displayOrder ?: 0 }
                 _state.update {
                     it.copy(
                         jobs = jobs,
-                        users = users.filter { u -> u.id > 0 }.sortedBy { u -> u.displayOrder ?: 0 }
+                        users = sortedUsers,
+                        isOffline = false,
+                        errorMessage = null
                     )
                 }
-            } catch (_: Exception) { /* keep last good */ }
+                runCatching {
+                    prefs.saveJobs(jobs)
+                    prefs.saveUsers(sortedUsers)
+                }
+            } catch (_: Exception) {
+                _state.update { it.copy(isOffline = true) }
+            }
         }
     }
 
@@ -107,6 +158,7 @@ class MorningPathViewModel(application: Application) : AndroidViewModel(applicat
             try {
                 val w = api.getWeather().body()
                 _state.update { it.copy(weather = w) }
+                w?.let { runCatching { prefs.saveWeather(it) } }
             } catch (_: Exception) { /* keep last good */ }
         }
     }
@@ -122,7 +174,15 @@ class MorningPathViewModel(application: Application) : AndroidViewModel(applicat
                 val endStr = today.plusDays(1).format(dateFmt)
                 val cal = api.getCalendarEvents(startStr, endStr).body() ?: emptyList()
                 _state.update { it.copy(calendarEvents = cal) }
+                runCatching { prefs.saveCalendarEvents(cal) }
             } catch (_: Exception) { /* keep last good */ }
+        }
+    }
+
+    private fun startAuthHeartbeat() = viewModelScope.launch {
+        while (isActive) {
+            delay(12 * 60 * 60 * 1000L)
+            runCatching { api.getSiteSettings() }
         }
     }
 
@@ -147,9 +207,18 @@ class MorningPathViewModel(application: Application) : AndroidViewModel(applicat
                 _state.update { it.copy(celebrateAssignmentId = assignment.id) }
             }
             val jobs = api.getJobs(today).body() ?: emptyList()
-            _state.update { it.copy(jobs = jobs) }
-        } catch (_: Exception) { /* surface via error state later */ }
+            _state.update {
+                it.copy(jobs = jobs, isOffline = false, errorMessage = null)
+            }
+            runCatching { prefs.saveJobs(jobs) }
+        } catch (e: Exception) {
+            _state.update {
+                it.copy(isOffline = true, errorMessage = "Couldn't save — retrying")
+            }
+        }
     }
 
     fun clearCelebrate() = _state.update { it.copy(celebrateAssignmentId = null) }
+
+    fun clearError() = _state.update { it.copy(errorMessage = null) }
 }

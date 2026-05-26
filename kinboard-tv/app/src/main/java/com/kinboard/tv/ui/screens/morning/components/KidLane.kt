@@ -31,14 +31,17 @@ fun KidLane(
     modifier: Modifier = Modifier
 ) {
     val (stones, doneCount, totalCount) = remember(jobs, kid) { buildLaneData(jobs, kid) }
+    val showStrip = stones.isNotEmpty()
 
     Box(modifier.focusGroup()) {
-        LanePathStrip(
-            laneIndex = laneIndex,
-            modifier = Modifier
-                .matchParentSize()
-                .padding(start = 280.dp, end = 60.dp)
-        )
+        if (showStrip) {
+            LanePathStrip(
+                laneIndex = laneIndex,
+                modifier = Modifier
+                    .matchParentSize()
+                    .padding(start = 280.dp, end = 60.dp)
+            )
+        }
         Row(
             modifier = Modifier
                 .fillMaxSize()
@@ -53,17 +56,26 @@ fun KidLane(
                 modifier = Modifier.width(200.dp)
             )
             Spacer(Modifier.width(20.dp))
-            StonePath(
-                stones = stones,
-                kid = kid,
-                isLaneFocused = isAnyFocused,
-                focusedStoneIndex = focusedStoneIndex,
-                onFocusStone = onFocusStone,
-                onToggleStone = onToggleStone,
+            Box(
                 modifier = Modifier
                     .weight(1f)
-                    .fillMaxHeight()
-            )
+                    .fillMaxHeight(),
+                contentAlignment = Alignment.Center
+            ) {
+                when {
+                    totalCount == 0 -> NoJobsToday()
+                    stones.isEmpty() -> AllDoneBanner(kid = kid)
+                    else -> StonePath(
+                        stones = stones,
+                        kid = kid,
+                        isLaneFocused = isAnyFocused,
+                        focusedStoneIndex = focusedStoneIndex,
+                        onFocusStone = onFocusStone,
+                        onToggleStone = onToggleStone,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+            }
         }
     }
 }

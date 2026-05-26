@@ -1,6 +1,7 @@
 package com.kinboard.tv.ui.screens.morning
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
@@ -9,18 +10,25 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.kinboard.tv.ui.screens.morning.components.ConfettiOverlay
 import com.kinboard.tv.ui.screens.morning.components.MorningCalendarRibbon
 import com.kinboard.tv.ui.screens.morning.components.MorningKidsBand
 import com.kinboard.tv.ui.screens.morning.components.MorningTopBar
 import com.kinboard.tv.ui.screens.morning.components.SceneryBackground
+import com.kinboard.tv.ui.theme.MorningGold
+import com.kinboard.tv.ui.theme.MorningInk
+import com.kinboard.tv.ui.theme.MorningType
 import com.kinboard.tv.ui.viewmodel.MorningPathViewModel
 import com.kinboard.tv.ui.viewmodel.MorningUiState
 
@@ -44,6 +52,7 @@ fun MorningPathScreen(state: MorningUiState, vm: MorningPathViewModel) {
                     scaleY = scale,
                     transformOrigin = TransformOrigin.Center
                 )
+                .focusable()
         ) {
             SceneryBackground(Modifier.fillMaxSize())
 
@@ -55,14 +64,53 @@ fun MorningPathScreen(state: MorningUiState, vm: MorningPathViewModel) {
                     .fillMaxWidth()
             )
 
-            MorningKidsBand(
-                state = state,
-                vm = vm,
-                modifier = Modifier
-                    .offset(y = 280.dp)
-                    .fillMaxWidth()
-                    .height(625.dp)
-            )
+            when {
+                state.isLoading && state.users.isEmpty() && state.jobs.isEmpty() -> {
+                    Box(
+                        modifier = Modifier
+                            .offset(y = 280.dp)
+                            .fillMaxWidth()
+                            .height(625.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(80.dp),
+                            color = MorningInk
+                        )
+                    }
+                }
+
+                state.users.isEmpty() -> {
+                    Box(
+                        modifier = Modifier
+                            .offset(y = 280.dp)
+                            .fillMaxWidth()
+                            .height(625.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = if (state.isOffline) {
+                                "Offline — waiting for connection"
+                            } else {
+                                "Add a family member in admin"
+                            },
+                            style = MorningType.fraunces(48f, italic = true, weight = FontWeight.Black)
+                                .copy(color = MorningInk)
+                        )
+                    }
+                }
+
+                else -> {
+                    MorningKidsBand(
+                        state = state,
+                        vm = vm,
+                        modifier = Modifier
+                            .offset(y = 280.dp)
+                            .fillMaxWidth()
+                            .height(625.dp)
+                    )
+                }
+            }
 
             MorningCalendarRibbon(
                 events = state.calendarEvents,
@@ -71,6 +119,36 @@ fun MorningPathScreen(state: MorningUiState, vm: MorningPathViewModel) {
                     .padding(bottom = 36.dp, start = 60.dp, end = 60.dp)
                     .fillMaxWidth()
             )
+
+            if (state.errorMessage != null) {
+                ErrorBanner(
+                    message = state.errorMessage,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .offset(y = 8.dp)
+                )
+            }
+
+            ConfettiOverlay(
+                triggerKey = state.celebrateAssignmentId,
+                originX = 0.5f,
+                originY = if (state.focusedKidIndex == 0) 0.42f else 0.72f,
+                onDone = { vm.clearCelebrate() }
+            )
         }
+    }
+}
+
+@Composable
+private fun ErrorBanner(message: String, modifier: Modifier = Modifier) {
+    Box(
+        modifier
+            .background(MorningGold, RoundedCornerShape(14.dp))
+            .padding(horizontal = 18.dp, vertical = 6.dp)
+    ) {
+        Text(
+            text = message,
+            style = MorningType.quicksand(18f, FontWeight.Bold).copy(color = MorningInk)
+        )
     }
 }

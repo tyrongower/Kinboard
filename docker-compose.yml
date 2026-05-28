@@ -1,12 +1,26 @@
 services:
   kinboard:
     image: tyrongower/kinboard:latest
+    container_name: kinboard
     ports:
       - "6565:6565"
     volumes:
       - kinboard-data:/app/data
     environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - TZ=Australia/Sydney
+      - Jwt__Secret=${JWT_SECRET:?JWT_SECRET required}
+      - ConnectionStrings__DefaultConnection=Data Source=/app/data/kinboard.db
       - Cors__AllowedOrigins__0=http://localhost:6565
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:6565/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
 volumes:
   kinboard-data:

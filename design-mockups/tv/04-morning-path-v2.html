@@ -58,20 +58,54 @@
     display:grid;grid-template-columns:1fr auto auto;gap:30px;
     padding:36px 60px 0 60px;align-items:flex-start;
   }
+  /* Countdown chip for non-readers (5 & 7 yo). Two signals stacked:
+       1. Whole-chip color phase: green → yellow → orange → red as time runs out.
+       2. Row of 6 beads, each = 10 min. Filled = time still left; emptied L→R as
+          minutes tick down. Tangible "how many left" the kids can count.
+     App mapping:
+       phase: >40min .safe (green) | 25-40 .soon (yellow) | 10-25 .hurry (orange) | <10 .critical (red+pulse)
+       beads filled = ceil(mins / 10), clamp(0..6) */
   .clock{
     text-align:center;
-    background:var(--red);color:#fff;
+    background:var(--phase, var(--red));color:#fff;
     border:5px solid var(--ink);
     border-radius:26px;
-    padding:14px 28px;
+    padding:14px 28px 12px 28px;
     box-shadow:0 8px 0 var(--ink);
     transform:rotate(-1.6deg);
     align-self:center;
   }
-  .clock .lbl{font-family:'Quicksand',sans-serif;font-weight:800;font-size:18px;color:#ffd9d0;letter-spacing:.22em;text-transform:uppercase}
-  .clock .now{font-family:'Fraunces',serif;font-weight:900;font-style:italic;font-size:70px;line-height:.85;color:#fff;letter-spacing:-.02em}
-  .clock .now small{font-family:'Quicksand',sans-serif;font-style:normal;font-weight:800;font-size:24px;color:#ffd9d0;display:inline-block;margin-left:4px}
-  .clock .target{font-family:'Caveat',cursive;font-weight:700;font-size:30px;color:#ffe9e2;margin-top:-2px;line-height:1}
+  .clock.safe    {--phase:#5fb85a}
+  .clock.soon    {--phase:#f5c443}
+  .clock.hurry   {--phase:#ef8a3c}
+  .clock.critical{--phase:#e85a3a;animation:clockPulse 1s ease-in-out infinite}
+  @keyframes clockPulse{
+    0%,100%{box-shadow:0 8px 0 var(--ink), 0 0 0 0 rgba(232,90,58,0); transform:rotate(-1.6deg) scale(1)}
+    50%    {box-shadow:0 8px 0 var(--ink), 0 0 0 14px rgba(232,90,58,.4); transform:rotate(-1.6deg) scale(1.04)}
+  }
+  /* yellow phase needs dark text for contrast */
+  .clock.soon .lbl, .clock.soon .now, .clock.soon .now small, .clock.soon .target{color:var(--ink);text-shadow:none}
+  .clock.soon .beads .b{border-color:var(--ink)}
+  .clock.soon .beads .b.on{background:var(--ink)}
+
+  .clock .lbl{font-family:'Quicksand',sans-serif;font-weight:800;font-size:18px;color:#fff;letter-spacing:.22em;text-transform:uppercase;opacity:.92}
+  .clock .now{font-family:'Fraunces',serif;font-weight:900;font-style:italic;font-size:72px;line-height:.85;color:#fff;letter-spacing:-.02em;text-shadow:0 3px 0 rgba(0,0,0,.18)}
+  .clock .now small{font-family:'Quicksand',sans-serif;font-style:normal;font-weight:800;font-size:24px;color:#fff;display:inline-block;margin-left:4px;opacity:.92;text-shadow:none}
+  /* bead row */
+  .clock .beads{
+    display:flex;justify-content:center;gap:8px;
+    margin:8px 0 6px 0;
+  }
+  .clock .beads .b{
+    width:18px;height:18px;border-radius:50%;
+    background:rgba(255,255,255,.22);
+    border:3px solid #fff;
+    box-shadow:0 2px 0 rgba(0,0,0,.18);
+    transition:background .3s ease, transform .3s ease;
+  }
+  .clock .beads .b.on{background:#fff}
+  .clock .beads .b.off{background:transparent;border-style:dashed;opacity:.55}
+  .clock .target{font-family:'Caveat',cursive;font-weight:700;font-size:28px;color:#fff;margin-top:-2px;line-height:1;opacity:.95}
   .brand{
     font-family:'Fraunces',serif;font-weight:900;font-style:italic;font-size:84px;line-height:.85;
     letter-spacing:-.02em;color:var(--ink);
@@ -340,9 +374,13 @@
       <small>tuesday · 26 may · misty · 13°</small>
       <span class="loc">📍 Stanthorpe, AU</span>
     </div>
-    <div class="clock">
+    <div class="clock safe">
       <div class="lbl">school in</div>
       <div class="now">47<small>min</small></div>
+      <div class="beads" aria-hidden="true">
+        <span class="b on"></span><span class="b on"></span><span class="b on"></span>
+        <span class="b on"></span><span class="b on"></span><span class="b off"></span>
+      </div>
       <div class="target">be ready by 8:25</div>
     </div>
     <div class="wx">

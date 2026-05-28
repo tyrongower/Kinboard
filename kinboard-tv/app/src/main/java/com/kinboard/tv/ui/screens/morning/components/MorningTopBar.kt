@@ -1,5 +1,11 @@
 package com.kinboard.tv.ui.screens.morning.components
 
+import androidx.compose.animation.core.EaseInOutSine
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -13,6 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -21,6 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
@@ -52,8 +60,14 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 private val cardRainPillBg = Color(0xFFCFE9FF)
-private val countdownLblColor = Color(0xFFFFD9D0)
-private val countdownTargetColor = Color(0xFFFFE9E2)
+
+// School countdown phase palette. Kids 5 & 7 read color faster than digits.
+private val PhaseSafe     = Color(0xFF5FB85A) // > 40 min
+private val PhaseSoon     = Color(0xFFF5C443) // 25..40 min — yellow uses dark ink for contrast
+private val PhaseHurry    = Color(0xFFEF8A3C) // 10..24 min
+private val PhaseCritical = Color(0xFFE85A3A) // < 10 min, also pulses
+private const val BEAD_COUNT = 6
+private const val BEAD_MINUTES = 10  // each bead = 10 min, total window = 60 min
 
 @Composable
 fun MorningTopBar(state: MorningUiState, modifier: Modifier = Modifier) {
@@ -172,12 +186,40 @@ fun SchoolCountdownChip(
     modifier: Modifier = Modifier
 ) {
     val mins = minutesUntilSchool(schoolStartTime, now) ?: return
+
+    // Phase by remaining minutes. < 10 also pulses.
+    val phaseColor = when {
+        mins >= 40 -> PhaseSafe
+        mins >= 25 -> PhaseSoon
+        mins >= 10 -> PhaseHurry
+        else       -> PhaseCritical
+    }
+    val isCritical = mins < 10
+    // Yellow needs dark ink text for AA contrast.
+    val onPhase = if (phaseColor == PhaseSoon) MorningInk else Color.White
+    val onPhaseSoft = if (phaseColor == PhaseSoon) MorningInk.copy(alpha = 0.78f) else Color.White.copy(alpha = 0.92f)
+    val beadsFilled = ((mins + BEAD_MINUTES - 1) / BEAD_MINUTES).coerceIn(0, BEAD_COUNT)
+
+    val pulseScale = if (isCritical) {
+        val t = rememberInfiniteTransition(label = "criticalPulse")
+        t.animateFloat(
+            initialValue = 1f,
+            targetValue = 1.05f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 600, easing = EaseInOutSine),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "criticalScale"
+        ).value
+    } else 1f
+
     Box(
         modifier
             .wrapContentSize()
             .rotate(-1.6f)
+            .scale(pulseScale)
             .hardShadow(offsetY = 8.dp, color = MorningInk, radius = 26.dp)
-            .background(MorningRed, RoundedCornerShape(26.dp))
+            .background(phaseColor, RoundedCornerShape(26.dp))
             .border(5.dp, MorningInk, RoundedCornerShape(26.dp))
             .padding(horizontal = 28.dp, vertical = 14.dp)
     ) {
@@ -185,28 +227,49 @@ fun SchoolCountdownChip(
             Text(
                 text = "SCHOOL IN",
                 style = MorningType.quicksand(18f, FontWeight.ExtraBold).copy(
-                    color = countdownLblColor,
+                    color = onPhaseSoft,
                     letterSpacing = 0.22.em
                 )
             )
             Row(verticalAlignment = Alignment.Bottom) {
                 Text(
                     text = "$mins",
-                    style = MorningType.fraunces(70f, italic = true).copy(color = Color.White)
+                    style = MorningType.fraunces(70f, italic = true).copy(color = onPhase)
                 )
                 Spacer(Modifier.width(4.dp))
                 Text(
                     text = "min",
                     style = MorningType.quicksand(24f, FontWeight.ExtraBold).copy(
-                        color = countdownLblColor,
+                        color = onPhaseSoft,
                         fontStyle = FontStyle.Normal
                     ),
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
             }
+            BeadRow(filled = beadsFilled, onPhase = onPhase)
             Text(
                 text = "be ready by $schoolStartTime",
-                style = MorningType.caveat(30f).copy(color = countdownTargetColor)
+                style = MorningType.caveat(30f).copy(color = onPhase)
+            )
+        }
+    }
+}
+
+@Composable
+private fun BeadRow(filled: Int, onPhase: Color) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+    ) {
+        repeat(BEAD_COUNT) { i ->
+            val on = i < filled
+            Box(
+                Modifier
+                    .size(18.dp)
+                    .clip(CircleShape)
+                    .background(if (on) onPhase else Color.Transparent)
+                    .border(3.dp, onPhase, CircleShape)
             )
         }
     }

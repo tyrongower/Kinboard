@@ -35,7 +35,14 @@ fun wearCueFor(f: ForecastItem): WearCue {
     return WearCue("sun hat", R.drawable.cue_hat)
 }
 
-/** Minutes remaining until schoolStartTime today. Null if past, blank, or >6h away. */
+/**
+ * Minutes remaining until schoolStartTime today.
+ *  - null if blank/unparseable.
+ *  - null if more than 6h before school (chip not relevant yet).
+ *  - null if more than 90 min past school start (morning over).
+ *  - otherwise returns minutes clamped to >= 0 so the chip shows "0 min"
+ *    at school time and remains visible during the grace window.
+ */
 fun minutesUntilSchool(
     schoolStartTime: String?,
     now: LocalDateTime = LocalDateTime.now()
@@ -46,7 +53,11 @@ fun minutesUntilSchool(
         ?: return null
     val target = LocalDateTime.of(now.toLocalDate(), t)
     val mins = Duration.between(now, target).toMinutes().toInt()
-    return if (mins in 1..360) mins else null
+    return when {
+        mins > 360 -> null
+        mins < -90 -> null
+        else -> mins.coerceAtLeast(0)
+    }
 }
 
 /** Parse calendar event time. Accepts ISO instant, naked local datetime, or date-only. */

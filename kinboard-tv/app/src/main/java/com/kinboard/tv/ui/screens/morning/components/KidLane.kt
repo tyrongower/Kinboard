@@ -26,11 +26,14 @@ fun KidLane(
     laneIndex: Int,
     isAnyFocused: Boolean,
     focusedStoneIndex: Int,
+    hideCompleted: Boolean,
     onFocusStone: (Int) -> Unit,
     onToggleStone: (Job, JobAssignment) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val (stones, doneCount, totalCount) = remember(jobs, kid) { buildLaneData(jobs, kid) }
+    val (stones, doneCount, totalCount) = remember(jobs, kid, hideCompleted) {
+        buildLaneData(jobs, kid, hideCompleted)
+    }
     val showStrip = stones.isNotEmpty()
 
     Box(modifier.focusGroup()) {
@@ -80,7 +83,11 @@ fun KidLane(
     }
 }
 
-private fun buildLaneData(jobs: List<Job>, kid: User): Triple<List<StoneData>, Int, Int> {
+private fun buildLaneData(
+    jobs: List<Job>,
+    kid: User,
+    hideCompleted: Boolean
+): Triple<List<StoneData>, Int, Int> {
     val visible = mutableListOf<StoneData>()
     var done = 0
     var total = 0
@@ -91,7 +98,7 @@ private fun buildLaneData(jobs: List<Job>, kid: User): Triple<List<StoneData>, I
             total += 1
             val isDone = a.isCompleted == true
             if (isDone) done += 1
-            if (isDone && kid.hideCompletedInKiosk == true) continue
+            if (isDone && hideCompleted) continue
             visible += StoneData(j, a)
         }
     }

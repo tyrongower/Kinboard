@@ -74,6 +74,8 @@ jobs:
           STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          # Baked into BuildConfig.SERVER_URL for the TV QR pairing flow.
+          API_BASE_URL: ${{ vars.API_BASE_URL }}
 
       - name: Rename TV APK
         run: |

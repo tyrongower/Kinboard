@@ -1,8 +1,13 @@
 ﻿package io.tyrongower.kinboard.ui.navigation
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -27,6 +32,18 @@ fun KinboardApp(
     authViewModel: AuthViewModel = hiltViewModel()
 ) {
     val authState by authViewModel.authState.collectAsState()
+
+    // Wait for the persisted-auth check to finish before building the nav graph.
+    // The graph's startDestination is read only once, so resolving auth first
+    // guarantees an authenticated user is never dropped on the Login screen
+    // (e.g. after backing out of the app and reopening).
+    if (!authState.isInitialized) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+        return
+    }
+
     val navController = rememberNavController()
 
     val startDestination = if (authState.isAuthenticated) {

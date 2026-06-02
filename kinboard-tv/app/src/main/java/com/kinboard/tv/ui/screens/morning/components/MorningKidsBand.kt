@@ -29,6 +29,7 @@ fun MorningKidsBand(
                 laneIndex = laneIndex,
                 isAnyFocused = state.focusedKidIndex == laneIndex,
                 focusedStoneIndex = state.focusedStoneIndex,
+                hideCompleted = state.hideCompleted,
                 onFocusStone = { stoneIdx -> vm.setFocus(laneIndex, stoneIdx) },
                 onToggleStone = { job, asg -> vm.toggleAssignment(job, asg) },
                 modifier = Modifier

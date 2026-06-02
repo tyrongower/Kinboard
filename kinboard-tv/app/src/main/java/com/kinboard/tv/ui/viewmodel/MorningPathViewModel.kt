@@ -34,7 +34,8 @@ data class MorningUiState(
     val errorMessage: String? = null,
     val focusedKidIndex: Int = 0,
     val focusedStoneIndex: Int = 0,
-    val celebrateAssignmentId: Int? = null
+    val celebrateAssignmentId: Int? = null,
+    val hideCompleted: Boolean = false
 )
 
 class MorningPathViewModel(application: Application) : AndroidViewModel(application) {
@@ -217,6 +218,8 @@ class MorningPathViewModel(application: Application) : AndroidViewModel(applicat
             }
         }
     }
+
+    fun toggleHideCompleted() = _state.update { it.copy(hideCompleted = !it.hideCompleted) }
 
     fun clearCelebrate() = _state.update { it.copy(celebrateAssignmentId = null) }
 

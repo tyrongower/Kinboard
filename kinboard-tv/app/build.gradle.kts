@@ -14,6 +14,14 @@ android {
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
+
+        // Baked-in server URL. Set at build time via the API_BASE_URL env var
+        // (GitHub Actions repo variable) or an `API_BASE_URL` Gradle property.
+        // Empty by default so local/dev builds fall back to manual entry.
+        val serverUrl = (System.getenv("API_BASE_URL")
+            ?: (project.findProperty("API_BASE_URL") as String?)
+            ?: "").trimEnd('/')
+        buildConfigField("String", "SERVER_URL", "\"$serverUrl\"")
     }
 
     signingConfigs {
@@ -55,6 +63,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     composeOptions {
@@ -97,6 +106,9 @@ dependencies {
 
     // Kotlin Serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")
+
+    // QR code generation (device pairing screen)
+    implementation("com.google.zxing:core:3.5.3")
 
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")

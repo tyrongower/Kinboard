@@ -59,6 +59,7 @@ fun MorningPathScreen(state: MorningUiState, vm: MorningPathViewModel) {
 
             MorningTopBar(
                 state = state,
+                onToggleHideCompleted = { vm.toggleHideCompleted() },
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .padding(top = 36.dp, start = 60.dp, end = 60.dp)

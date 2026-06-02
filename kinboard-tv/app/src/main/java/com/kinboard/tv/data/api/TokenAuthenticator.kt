@@ -2,21 +2,11 @@ package com.kinboard.tv.data.api
 
 import android.content.Context
 import com.kinboard.tv.data.model.KioskAuthRequest
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import okhttp3.Authenticator
 import okhttp3.Request
 import okhttp3.Response
 import okhttp3.Route
-
-object AuthEvents {
-    private val _logoutRequired = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
-    val logoutRequired: SharedFlow<Unit> = _logoutRequired.asSharedFlow()
-    fun signalLogout() { _logoutRequired.tryEmit(Unit) }
-}
 
 class TokenAuthenticator(
     private val context: Context,
@@ -34,16 +24,21 @@ class TokenAuthenticator(
             if (responseCount(response) >= 2) return@runBlocking null
 
             val sessionManager = SessionManager(context)
-            val currentToken = sessionManager.getAccessToken()
             val baseUrl = sessionManager.getBaseUrl()
             val storedPin = sessionManager.getPin()
 
+            // No stored credentials to refresh with. Never clear login here:
+            // only clearing the app cache/storage is allowed to log the device out.
             if (storedPin == null || baseUrl == null) {
-                AuthEvents.signalLogout()
                 return@runBlocking null
             }
 
-            val newAuthResponse = ApiClient.getApi(context).authenticate(KioskAuthRequest(storedPin))
+            val newAuthResponse = try {
+                ApiClient.getApi(context).authenticate(KioskAuthRequest(storedPin))
+            } catch (e: Exception) {
+                // Network/server error: fail this request but keep credentials.
+                return@runBlocking null
+            }
 
             if (newAuthResponse.isSuccessful && newAuthResponse.body() != null) {
                 val newAccessToken = newAuthResponse.body()!!.accessToken
@@ -52,12 +47,10 @@ class TokenAuthenticator(
                 response.request.newBuilder()
                     .header("Authorization", "Bearer $newAccessToken")
                     .build()
-            } else if (newAuthResponse.code() == 401) {
-                sessionManager.clearPin()
-                sessionManager.clearAccessToken()
-                AuthEvents.signalLogout()
-                null
             } else {
+                // Refresh failed (including 401). Do NOT clear stored credentials and
+                // do NOT force logout — the device stays "logged in" and will retry
+                // on the next request. Clearing the app cache is the only logout path.
                 null
             }
         }

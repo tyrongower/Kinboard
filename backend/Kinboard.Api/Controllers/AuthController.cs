@@ -346,6 +346,201 @@ public class AuthController : ControllerBase
         return Ok(new { message = "Token revoked successfully" });
     }
 
+    // ---- Device pairing ("login via mobile" QR flow) ----
+    //
+    // 1. TV calls POST device/start, gets a secret deviceCode + a userCode, and
+    //    shows a QR pointing at {frontend}/pair?code={userCode}.
+    // 2. Admin opens that URL on their phone, logs in (admin auth), and calls
+    //    POST device/approve, which mints a kiosk token for the pairing.
+    // 3. TV polls POST device/poll with its deviceCode and, once approved, receives
+    //    the kiosk token + an access token (one time), then is fully authenticated.
+
+    private const int PairingTtlMinutes = 10;
+    private const int PairingPollIntervalSeconds = 3;
+
+    /// <summary>
+    /// Start a device pairing session (called by the TV/kiosk device). Anonymous.
+    /// </summary>
+    [HttpPost("device/start")]
+    public async Task<ActionResult<DeviceStartResponse>> DeviceStart()
+    {
+        // Opportunistically drop stale pairings so the table stays small.
+        var cutoff = DateTime.UtcNow.AddHours(-1);
+        var stale = await _context.DevicePairings
+            .Where(p => p.ExpiresAt < cutoff)
+            .ToListAsync();
+        if (stale.Count > 0)
+        {
+            _context.DevicePairings.RemoveRange(stale);
+        }
+
+        var pairing = new DevicePairing
+        {
+            DeviceCode = _tokenService.GenerateKioskTokenString(),
+            UserCode = _tokenService.GenerateDeviceUserCode(),
+            Status = DevicePairingStatus.Pending,
+            CreatedAt = DateTime.UtcNow,
+            ExpiresAt = DateTime.UtcNow.AddMinutes(PairingTtlMinutes)
+        };
+
+        _context.DevicePairings.Add(pairing);
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("Device pairing started: {UserCode}", pairing.UserCode);
+
+        return Ok(new DeviceStartResponse
+        {
+            DeviceCode = pairing.DeviceCode,
+            UserCode = pairing.UserCode,
+            ExpiresInSeconds = PairingTtlMinutes * 60,
+            IntervalSeconds = PairingPollIntervalSeconds
+        });
+    }
+
+    /// <summary>
+    /// Poll a pairing session for approval (called by the device). Anonymous.
+    /// Knowledge of the high-entropy device code is the only thing required.
+    /// </summary>
+    [HttpPost("device/poll")]
+    public async Task<ActionResult<DevicePollResponse>> DevicePoll([FromBody] DevicePollRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.DeviceCode))
+        {
+            return BadRequest(new { message = "Device code is required" });
+        }
+
+        var pairing = await _context.DevicePairings
+            .FirstOrDefaultAsync(p => p.DeviceCode == request.DeviceCode);
+
+        if (pairing == null)
+        {
+            return NotFound(new { message = "Unknown device code" });
+        }
+
+        // Approved: hand over the kiosk token + a fresh access token, exactly once.
+        if (pairing.Status == DevicePairingStatus.Approved && pairing.KioskTokenId.HasValue)
+        {
+            var kioskToken = await _context.KioskTokens.FindAsync(pairing.KioskTokenId.Value);
+
+            if (kioskToken == null || !kioskToken.IsActive)
+            {
+                // Token was revoked/deleted before collection — treat as expired.
+                pairing.Status = DevicePairingStatus.Expired;
+                await _context.SaveChangesAsync();
+                return Ok(new DevicePollResponse { Status = DevicePairingStatus.Expired });
+            }
+
+            var accessToken = _tokenService.GenerateKioskAccessToken(kioskToken.Id.ToString());
+            pairing.Status = DevicePairingStatus.Consumed;
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Device pairing consumed: {UserCode}", pairing.UserCode);
+
+            return Ok(new DevicePollResponse
+            {
+                Status = DevicePairingStatus.Approved,
+                KioskToken = kioskToken.Token,
+                AccessToken = accessToken
+            });
+        }
+
+        // Still pending but past its TTL.
+        if (pairing.Status == DevicePairingStatus.Pending && pairing.ExpiresAt < DateTime.UtcNow)
+        {
+            pairing.Status = DevicePairingStatus.Expired;
+            await _context.SaveChangesAsync();
+            return Ok(new DevicePollResponse { Status = DevicePairingStatus.Expired });
+        }
+
+        if (pairing.Status == DevicePairingStatus.Pending)
+        {
+            return Ok(new DevicePollResponse { Status = DevicePairingStatus.Pending });
+        }
+
+        // Consumed or expired — tell the device to stop polling.
+        return Ok(new DevicePollResponse { Status = DevicePairingStatus.Expired });
+    }
+
+    /// <summary>
+    /// Look up a pairing by user code so the /pair page can show its state. Anonymous.
+    /// </summary>
+    [HttpGet("device/info")]
+    public async Task<ActionResult<DeviceInfoResponse>> DeviceInfo([FromQuery] string userCode)
+    {
+        if (string.IsNullOrWhiteSpace(userCode))
+        {
+            return Ok(new DeviceInfoResponse { Found = false, Status = "unknown" });
+        }
+
+        var pairing = await _context.DevicePairings
+            .FirstOrDefaultAsync(p => p.UserCode == userCode);
+
+        if (pairing == null)
+        {
+            return Ok(new DeviceInfoResponse { Found = false, Status = "unknown" });
+        }
+
+        var status = pairing.Status;
+        if (status == DevicePairingStatus.Pending && pairing.ExpiresAt < DateTime.UtcNow)
+        {
+            status = DevicePairingStatus.Expired;
+        }
+
+        return Ok(new DeviceInfoResponse { Found = true, Status = status });
+    }
+
+    /// <summary>
+    /// Approve a pairing and mint a kiosk token for the device (admin only).
+    /// </summary>
+    [HttpPost("device/approve")]
+    [Authorize(Roles = "admin")]
+    public async Task<IActionResult> DeviceApprove([FromBody] DeviceApproveRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.UserCode))
+        {
+            return BadRequest(new { message = "User code is required" });
+        }
+
+        var pairing = await _context.DevicePairings
+            .FirstOrDefaultAsync(p => p.UserCode == request.UserCode);
+
+        if (pairing == null)
+        {
+            return NotFound(new { message = "Pairing not found" });
+        }
+
+        if (pairing.Status != DevicePairingStatus.Pending)
+        {
+            return BadRequest(new { message = "This pairing has already been used or is no longer valid" });
+        }
+
+        if (pairing.ExpiresAt < DateTime.UtcNow)
+        {
+            pairing.Status = DevicePairingStatus.Expired;
+            await _context.SaveChangesAsync();
+            return BadRequest(new { message = "This pairing code has expired. Please restart pairing on the TV." });
+        }
+
+        // Mint a long-lived kiosk token the device will collect on its next poll.
+        var kioskToken = new KioskToken
+        {
+            Token = _tokenService.GenerateKioskTokenString(),
+            Name = $"TV (paired {DateTime.UtcNow:yyyy-MM-dd})",
+            CreatedAt = DateTime.UtcNow
+        };
+        _context.KioskTokens.Add(kioskToken);
+        await _context.SaveChangesAsync();
+
+        pairing.KioskTokenId = kioskToken.Id;
+        pairing.Status = DevicePairingStatus.Approved;
+        pairing.ApprovedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("Device pairing approved: {UserCode} -> kiosk token {TokenId}", pairing.UserCode, kioskToken.Id);
+
+        return Ok(new { message = "TV connected successfully" });
+    }
+
     /// <summary>
     /// Helper method to set refresh token cookie with security settings.
     /// </summary>

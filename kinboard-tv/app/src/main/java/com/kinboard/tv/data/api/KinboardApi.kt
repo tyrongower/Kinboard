@@ -15,6 +15,16 @@ interface KinboardApi {
     
     @GET("api/auth/status")
     suspend fun getAuthStatus(): Response<AuthStatusResponse>
+
+    // Device pairing (QR "login via mobile")
+
+    @POST("api/auth/device/start")
+    suspend fun deviceStart(): Response<DeviceStartResponse>
+
+    @POST("api/auth/device/poll")
+    suspend fun devicePoll(
+        @Body request: DevicePollRequest
+    ): Response<DevicePollResponse>
     
     // Jobs
     

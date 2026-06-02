@@ -15,7 +15,10 @@ data class AuthState(
     val isLoading: Boolean = false,
     val isAuthenticated: Boolean = false,
     val role: String? = null,
-    val error: String? = null
+    val error: String? = null,
+    // False until the initial persisted-auth check completes. Navigation must wait
+    // for this so an authenticated user is never shown the Login screen on cold start.
+    val isInitialized: Boolean = false
 )
 
 @HiltViewModel
@@ -36,7 +39,8 @@ class AuthViewModel @Inject constructor(
             val role = authRepository.getRole()
             _authState.value = AuthState(
                 isAuthenticated = isAuthenticated,
-                role = role
+                role = role,
+                isInitialized = true
             )
         }
     }
@@ -49,7 +53,8 @@ class AuthViewModel @Inject constructor(
                 is AuthResult.Success -> {
                     _authState.value = AuthState(
                         isAuthenticated = true,
-                        role = result.response.role
+                        role = result.response.role,
+                        isInitialized = true
                     )
                 }
                 is AuthResult.Error -> {
@@ -70,7 +75,8 @@ class AuthViewModel @Inject constructor(
                 is AuthResult.Success -> {
                     _authState.value = AuthState(
                         isAuthenticated = true,
-                        role = result.response.role
+                        role = result.response.role,
+                        isInitialized = true
                     )
                 }
                 is AuthResult.Error -> {
@@ -86,7 +92,7 @@ class AuthViewModel @Inject constructor(
     fun logout() {
         viewModelScope.launch {
             authRepository.logout()
-            _authState.value = AuthState()
+            _authState.value = AuthState(isInitialized = true)
         }
     }
 

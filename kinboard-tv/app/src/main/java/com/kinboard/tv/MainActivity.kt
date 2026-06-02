@@ -11,7 +11,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.kinboard.tv.data.api.AuthEvents
+import com.kinboard.tv.ui.screens.ConnectScreen
 import com.kinboard.tv.ui.screens.JobsScreen
 import com.kinboard.tv.ui.screens.LoginScreen
 import com.kinboard.tv.ui.screens.morning.MorningPathScreen
@@ -21,6 +21,7 @@ import com.kinboard.tv.ui.viewmodel.LoginViewModel
 import com.kinboard.tv.ui.viewmodel.MorningPathViewModel
 
 sealed class Screen(val route: String) {
+    object Connect : Screen("connect")
     object Login : Screen("login")
     object Jobs : Screen("jobs")
     object Morning : Screen("morning")
@@ -42,31 +43,46 @@ fun KinboardTVApp() {
     val navController = rememberNavController()
     val loginViewModel: LoginViewModel = viewModel()
     val loginState by loginViewModel.uiState.collectAsState()
+    val pairingState by loginViewModel.pairingState.collectAsState()
 
     // Navigate based on authentication state
     LaunchedEffect(loginState.isAuthenticated) {
         if (loginState.isAuthenticated) {
             navController.navigate(Screen.Morning.route) {
-                popUpTo(Screen.Login.route) { inclusive = true }
+                popUpTo(Screen.Connect.route) { inclusive = true }
             }
         } else {
-            navController.navigate(Screen.Login.route) {
+            navController.navigate(Screen.Connect.route) {
                 popUpTo(Screen.Morning.route) { inclusive = true }
             }
         }
     }
 
-    // Force re-login when TokenAuthenticator gives up
-    LaunchedEffect(Unit) {
-        AuthEvents.logoutRequired.collect {
-            loginViewModel.logout()
-        }
-    }
-
     NavHost(
         navController = navController,
-        startDestination = Screen.Login.route
+        startDestination = Screen.Connect.route
     ) {
+        composable(Screen.Connect.route) {
+            // Begin a fresh pairing session each time this screen is entered.
+            LaunchedEffect(Unit) {
+                if (loginViewModel.canPair) {
+                    loginViewModel.startPairing()
+                }
+            }
+            ConnectScreen(
+                isLoading = pairingState.isLoading,
+                qrContent = pairingState.qrContent,
+                errorMessage = pairingState.errorMessage,
+                expired = pairingState.expired,
+                canPair = loginViewModel.canPair,
+                onRetry = loginViewModel::startPairing,
+                onManualLogin = {
+                    loginViewModel.stopPairing()
+                    navController.navigate(Screen.Login.route)
+                }
+            )
+        }
+
         composable(Screen.Login.route) {
             LoginScreen(
                 serverUrl = loginState.serverUrl,
@@ -75,7 +91,10 @@ fun KinboardTVApp() {
                 errorMessage = loginState.errorMessage,
                 onServerUrlChange = loginViewModel::updateServerUrl,
                 onKioskTokenChange = loginViewModel::updateKioskToken,
-                onAuthenticate = loginViewModel::authenticate
+                onAuthenticate = loginViewModel::authenticate,
+                onBack = if (loginViewModel.canPair) {
+                    { navController.navigate(Screen.Connect.route) }
+                } else null
             )
         }
 

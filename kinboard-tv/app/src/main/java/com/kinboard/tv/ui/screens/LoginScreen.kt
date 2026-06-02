@@ -13,6 +13,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Text
 import com.kinboard.tv.ui.components.KinboardButton
+import com.kinboard.tv.ui.components.KinboardOutlinedButton
 import com.kinboard.tv.ui.components.KinboardTextField
 import com.kinboard.tv.ui.theme.*
 
@@ -26,6 +27,7 @@ fun LoginScreen(
     onServerUrlChange: (String) -> Unit,
     onKioskTokenChange: (String) -> Unit,
     onAuthenticate: () -> Unit,
+    onBack: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Box(
@@ -140,6 +142,17 @@ fun LoginScreen(
                 color = OnSurfaceDisabled,
                 textAlign = TextAlign.Center
             )
+
+            // Optional: return to the QR pairing screen.
+            if (onBack != null) {
+                Spacer(modifier = Modifier.height(Spacing.lg))
+                KinboardOutlinedButton(
+                    text = "Use QR code instead",
+                    onClick = onBack,
+                    enabled = !isLoading,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
         }
     }
 }

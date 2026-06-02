@@ -520,6 +520,21 @@ export const kioskTokenApi = {
   },
 };
 
+// Device pairing ("login via mobile" QR flow). approve() requires an admin token.
+export const deviceApi = {
+  async approve(userCode: string): Promise<void> {
+    const response = await authFetch(`${API_URL}/api/auth/device/approve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userCode }),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'Failed to connect TV' }));
+      throw new Error(error.message || 'Failed to connect TV');
+    }
+  },
+};
+
 export const shoppingItemApi = {
   async getAll(listId: number): Promise<ShoppingItem[]> {
     const response = await authFetch(`${API_URL}/api/shoppinglists/${listId}/items`);

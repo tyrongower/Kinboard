@@ -96,6 +96,19 @@ public class TokenService : ITokenService
             .TrimEnd('=');
     }
 
+    public string GenerateDeviceUserCode()
+    {
+        // 12 random bytes -> 16 URL-safe base64 chars. Random (not human-typed),
+        // delivered via QR, so collision/guessing is negligible.
+        var randomBytes = new byte[12];
+        using var rng = RandomNumberGenerator.Create();
+        rng.GetBytes(randomBytes);
+        return Convert.ToBase64String(randomBytes)
+            .Replace('+', '-')
+            .Replace('/', '_')
+            .TrimEnd('=');
+    }
+
     public int? ValidateToken(string token)
     {
         try

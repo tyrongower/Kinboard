@@ -27,6 +27,11 @@ public interface ITokenService
     string GenerateKioskTokenString();
 
     /// <summary>
+    /// Generates a short, URL-safe random code for device pairing (placed in a QR URL).
+    /// </summary>
+    string GenerateDeviceUserCode();
+
+    /// <summary>
     /// Validates a JWT token and returns the user ID if valid.
     /// </summary>
     int? ValidateToken(string token);

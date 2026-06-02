@@ -89,6 +89,25 @@ export async function kioskAuthenticate(token: string): Promise<AuthResponse> {
   return response.json();
 }
 
+export interface DeviceInfo {
+  found: boolean;
+  status: 'pending' | 'approved' | 'consumed' | 'expired' | 'unknown';
+}
+
+/**
+ * Public lookup of a device-pairing session by its user code.
+ * Used by the /pair page to show pairing state before the admin logs in.
+ */
+export async function getDeviceInfo(userCode: string): Promise<DeviceInfo> {
+  const response = await fetch(
+    `${API_URL}/api/auth/device/info?userCode=${encodeURIComponent(userCode)}`
+  );
+  if (!response.ok) {
+    throw new Error('Failed to look up pairing');
+  }
+  return response.json();
+}
+
 /**
  * Check authentication status
  */

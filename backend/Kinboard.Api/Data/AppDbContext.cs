@@ -19,6 +19,7 @@ public class AppDbContext : DbContext
     public DbSet<ShoppingItem> ShoppingItems { get; set; }
     public DbSet<RefreshToken> RefreshTokens { get; set; }
     public DbSet<KioskToken> KioskTokens { get; set; }
+    public DbSet<DevicePairing> DevicePairings { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -217,6 +218,18 @@ public class AppDbContext : DbContext
             entity.Property(e => e.CreatedAt).IsRequired();
             entity.Property(e => e.RevocationReason).HasMaxLength(500);
             entity.HasIndex(e => e.Token).IsUnique();
+        });
+
+        modelBuilder.Entity<DevicePairing>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.DeviceCode).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.UserCode).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Status).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.CreatedAt).IsRequired();
+            entity.Property(e => e.ExpiresAt).IsRequired();
+            entity.HasIndex(e => e.DeviceCode).IsUnique();
+            entity.HasIndex(e => e.UserCode).IsUnique();
         });
     }
 }

@@ -31,6 +31,9 @@ jobs:
         run: |
           cd kinboard-tv
           ./gradlew assembleDebug --no-daemon --stacktrace
+        env:
+          # Baked into BuildConfig.SERVER_URL for the TV QR pairing flow.
+          API_BASE_URL: ${{ vars.API_BASE_URL }}
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4

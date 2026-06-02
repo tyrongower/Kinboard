@@ -6,6 +6,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -24,11 +26,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
@@ -39,6 +46,11 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import androidx.tv.material3.Border
+import androidx.tv.material3.ClickableSurfaceDefaults
+import androidx.tv.material3.ExperimentalTvMaterial3Api
+import androidx.tv.material3.Surface
+import com.kinboard.tv.R
 import com.kinboard.tv.data.model.ForecastItem
 import com.kinboard.tv.data.model.SiteSettings
 import com.kinboard.tv.data.model.WeatherData
@@ -48,6 +60,7 @@ import com.kinboard.tv.ui.screens.morning.wearCueFor
 import com.kinboard.tv.ui.screens.morning.weatherIconFor
 import com.kinboard.tv.ui.theme.MorningCueHeavy
 import com.kinboard.tv.ui.theme.MorningCueRain
+import com.kinboard.tv.ui.theme.MorningGold
 import com.kinboard.tv.ui.theme.MorningInk
 import com.kinboard.tv.ui.theme.MorningInkSoft
 import com.kinboard.tv.ui.theme.MorningRainBlue
@@ -70,7 +83,11 @@ private const val BEAD_COUNT = 6
 private const val BEAD_MINUTES = 10  // each bead = 10 min, total window = 60 min
 
 @Composable
-fun MorningTopBar(state: MorningUiState, modifier: Modifier = Modifier) {
+fun MorningTopBar(
+    state: MorningUiState,
+    onToggleHideCompleted: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(30.dp),
@@ -83,12 +100,65 @@ fun MorningTopBar(state: MorningUiState, modifier: Modifier = Modifier) {
             isOffline = state.isOffline,
             modifier = Modifier.weight(1f)
         )
+        HideCompletedToggle(
+            hideCompleted = state.hideCompleted,
+            onToggle = onToggleHideCompleted,
+            modifier = Modifier.align(Alignment.CenterVertically)
+        )
         SchoolCountdownChip(
             schoolStartTime = state.siteSettings?.schoolStartTime,
             now = state.now,
             modifier = Modifier.align(Alignment.CenterVertically)
         )
         WeatherStrip(state.weather)
+    }
+}
+
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun HideCompletedToggle(
+    hideCompleted: Boolean,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var focused by remember { mutableStateOf(false) }
+    Surface(
+        onClick = onToggle,
+        modifier = modifier
+            .size(72.dp)
+            .onFocusChanged { focused = it.isFocused },
+        shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(20.dp)),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = Color.White,
+            focusedContainerColor = Color.White,
+            pressedContainerColor = Color.White
+        ),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.06f),
+        border = ClickableSurfaceDefaults.border(
+            border = Border(
+                border = BorderStroke(4.dp, MorningInk),
+                shape = RoundedCornerShape(20.dp)
+            ),
+            focusedBorder = Border(
+                border = BorderStroke(5.dp, MorningGold),
+                shape = RoundedCornerShape(20.dp)
+            )
+        )
+    ) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Icon(
+                painter = painterResource(
+                    if (hideCompleted) R.drawable.ic_eye_off else R.drawable.ic_eye
+                ),
+                contentDescription = if (hideCompleted) {
+                    "Show finished jobs"
+                } else {
+                    "Hide finished jobs"
+                },
+                tint = if (focused) MorningRed else MorningInk,
+                modifier = Modifier.size(40.dp)
+            )
+        }
     }
 }
 

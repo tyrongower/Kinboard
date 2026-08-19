@@ -118,6 +118,24 @@ The admin UI is at http://localhost:6565/admin and the kiosk display is at http:
 
 `JWT_SECRET` and `KINBOARD_ORIGIN` are required and the stack refuses to start without them. `KINBOARD_ORIGIN` must be the exact `scheme://host:port` browsers and kiosks use - CORS is origin-exact and credentialed, and an empty value throws at startup.
 
+The stack also joins an external `proxy` network so a reverse proxy container can
+reach it by name at `kinboard:6565`. Create it once if it doesn't exist:
+
+```bash
+docker network create proxy
+```
+
+Caddy example (Caddy must be attached to the same `proxy` network):
+
+```caddyfile
+kinboard.example.com {
+    reverse_proxy kinboard:6565
+}
+```
+
+Behind a proxy you can drop the `ports:` block entirely so 6565 isn't exposed on
+the LAN. Set `KINBOARD_ORIGIN` to the public URL, e.g. `https://kinboard.example.com`.
+
 ### Deploying as a Dockhand Git stack
 
 [Dockhand](https://dockhand.pro/) can deploy this repo directly:

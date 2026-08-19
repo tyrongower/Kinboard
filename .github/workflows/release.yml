@@ -39,6 +39,7 @@ jobs:
           fi
 
           echo "TAGS=${TAGS}" >> $GITHUB_OUTPUT
+          echo "CREATED=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_OUTPUT
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
@@ -46,6 +47,10 @@ jobs:
           context: .
           push: true
           tags: ${{ steps.tags.outputs.TAGS }}
+          build-args: |
+            VERSION=${{ steps.version.outputs.VERSION }}
+            REVISION=${{ github.sha }}
+            CREATED=${{ steps.tags.outputs.CREATED }}
 
       # Android TV App Build
       - name: Set up JDK 17

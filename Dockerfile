@@ -35,4 +35,16 @@ ENV NODE_ENV=production
 ENV BACKEND_PORT=5000
 ENV Cors__AllowedOrigins__0=http://localhost:6565
 
+ARG VERSION=dev
+ARG REVISION=unknown
+ARG CREATED=unknown
+
+LABEL org.opencontainers.image.title="Kinboard" \
+      org.opencontainers.image.description="Family household dashboard with chores, calendar, shopping lists, and kiosk display" \
+      org.opencontainers.image.source="https://github.com/tyrongower/Kinboard" \
+      org.opencontainers.image.licenses="GPL-3.0-or-later" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.revision="${REVISION}" \
+      org.opencontainers.image.created="${CREATED}"
+
 CMD ["sh", "-c", "export ASPNETCORE_URLS=http://+:${BACKEND_PORT} && dotnet /app/backend/Kinboard.Api.dll & npm start -- -p 6565"]

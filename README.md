@@ -96,32 +96,38 @@ The easiest way to run Kinboard is using Docker with the published image.
 
 ### Using Docker Compose (recommended)
 
-1) Create a `docker-compose.yml` file:
+The repo ships a ready `docker-compose.yml`. Clone the repo (or copy that file), then:
 
-```yaml
-services:
-  kinboard:
-    image: tyrongower/kinboard:latest
-    ports:
-      - "6565:6565"
-    volumes:
-      - kinboard-data:/app/data
-    environment:
-      - Cors__AllowedOrigins__0=http://localhost:6565
-    restart: unless-stopped
-volumes:
-  kinboard-data:
+1) Create `.env` alongside it from `.env.example`:
+
+```bash
+cp .env.example .env
+# set JWT_SECRET (openssl rand -base64 48) and KINBOARD_ORIGIN
+chmod 600 .env
 ```
 
 2) Start the service:
 
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 3) Access Kinboard at http://localhost:6565
 
 The admin UI is at http://localhost:6565/admin and the kiosk display is at http://localhost:6565/kiosk.
+
+`JWT_SECRET` and `KINBOARD_ORIGIN` are required and the stack refuses to start without them. `KINBOARD_ORIGIN` must be the exact `scheme://host:port` browsers and kiosks use - CORS is origin-exact and credentialed, and an empty value throws at startup.
+
+### Deploying as a Dockhand Git stack
+
+[Dockhand](https://dockhand.pro/) can deploy this repo directly:
+
+1) Add the repository as a Git source, pointed at `main`.
+2) Create a stack from it using `docker-compose.yml`.
+3) Add stack variables - `KINBOARD_ORIGIN` (and any optional overrides) as plain variables, `JWT_SECRET` as a **secret** so it is never written to disk.
+4) Deploy. Enable webhook auto-sync to redeploy on push.
+
+The compose file uses named volumes rather than relative bind mounts on purpose: Dockhand checks the repo out under `$DATA_DIR/git-repos`, so `./data`-style paths are neither stable nor predictable.
 
 ### Using Docker CLI
 
@@ -132,6 +138,8 @@ docker run -d \
   --name kinboard \
   -p 6565:6565 \
   -v kinboard-data:/app/data \
+  -v kinboard-media:/app/wwwroot \
+  -e Jwt__Secret="$(openssl rand -base64 48)" \
   -e Cors__AllowedOrigins__0=http://localhost:6565 \
   --restart unless-stopped \
   tyrongower/kinboard:latest
@@ -139,12 +147,40 @@ docker run -d \
 
 ### Docker environment variables
 
-- `Cors__AllowedOrigins__0`, `Cors__AllowedOrigins__1`, etc.: Allowed CORS origins for production
-- Additional backend configuration can be passed as environment variables (see Configuration section)
+Substituted by compose (see `.env.example`):
+
+- `JWT_SECRET` (required), `KINBOARD_ORIGIN` (required)
+- `KINBOARD_PORT`, `TZ`, `KINBOARD_IMAGE`, `KINBOARD_TAG`, `KINBOARD_CONTAINER_NAME`
+
+Read directly by the backend:
+
+- `Jwt__Secret`: JWT signing key
+- `ConnectionStrings__DefaultConnection`: SQLite path, e.g. `Data Source=/app/data/kinboard.db`
+- `Cors__AllowedOrigins__0`, `Cors__AllowedOrigins__1`, etc.: allowed CORS origins for production
+- Any other backend setting, using `__` for nesting (see Configuration section)
 
 ### Data persistence
 
-The Docker image stores data in `/app/data` (SQLite database and other persistent files). Mount a volume to this path to persist data across container restarts.
+Two volumes are required - `/app/data` alone is not enough:
+
+- `/app/data` - SQLite database
+- `/app/wwwroot` - uploaded avatars and job images (written relative to the app's working directory, not under `/app/data`)
+
+Migrating an existing install? Load the files into the named volumes before the first start, since the backend applies EF migrations on boot and schema upgrades are one-way:
+
+```bash
+docker compose create
+docker cp kinboard.db kinboard:/app/data/kinboard.db
+docker cp wwwroot/. kinboard:/app/wwwroot/
+docker compose up -d
+```
+
+Back up both volumes together:
+
+```bash
+docker exec kinboard sh -c 'cd /app/data && tar cz kinboard.db' > kinboard-db.tgz
+docker exec kinboard tar cz -C /app wwwroot > kinboard-media.tgz
+```
 
 ---
 

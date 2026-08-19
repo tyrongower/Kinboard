@@ -18,6 +18,9 @@ WORKDIR /app
 RUN apk add --no-cache dotnet9-runtime aspnetcore9-runtime
 
 COPY --from=backend-build /app/backend /app/backend
+# Content root is /app, so static files are served from /app/wwwroot - not the
+# published copy at /app/backend/wwwroot. Seeds the kinboard-media volume.
+COPY --from=backend-build /app/backend/wwwroot /app/wwwroot
 COPY backend/Kinboard.Api/appsettings.json /app/appsettings.json
 COPY --from=frontend-build /app/.next /app/.next
 COPY --from=frontend-build /app/public /app/public
